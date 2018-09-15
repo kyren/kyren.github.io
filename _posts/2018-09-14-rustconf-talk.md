@@ -37,8 +37,9 @@ while true, kind of beside the point.  However, people seemed very interested
 and are (very rightly) reminding me that I haven't posted this yet, so rather
 than delay any further I'm going to give you the very lightly edited text
 version of the talk that I made.  Keep in mind this was before I realized I
-would NEVER fit this into 30 minutes :).
-
+would NEVER fit this into 30 minutes :).  This is written in a very informal,
+conversational style because this was intended as the source material for my
+talk.
 
 Without further ado...
 
@@ -74,9 +75,6 @@ Chucklefish back when we were all working over IRC.  I was the technical lead at
 Chucklefish when we first decided that we should probably have somebody be
 called the "technical lead".  I still work with Chucklefish peripherally, but
 I've since moved back to the US and I work on things more independently now.
-
-(NOTE: I can go into more detail during the talk, I don't really know how much
-detail to go into here or what's interesting.)
 
 But, honestly not sure you SHOULD listen to me!  I've helped release ONE (1)
 whole commercial game, and some of this talk is a cautionary tale about what NOT
@@ -1037,10 +1035,6 @@ of the talk (Just use ECS!).  You CAN make a game this way, but you'll have a
 lot of problems and poke a LOT of holes and probably end up with some
 mega-objects.  Just for a nice visceral reaction, let's look at the actual,
 *for-real* Player class inside Starbound as of the current version:
-
-(NOTE: This is huge, I don't know whether I *need* to include the whole thing,
-but just the length is pretty illuminating.  Maybe I'll just scroll through it
-really fast?)
 
 ```cpp
 class Player :
@@ -2496,14 +2490,12 @@ lazy_static! {
 ```
 
 I like this pattern, because this is, if you squint, almost like a sort of
-global type registry like you might find in Java.  (NOTE: I vaguely remember a
-bunch of Java frameworks having this, allowing you to specify type names in
-config files based on type registries... somewhere)  It feels a bit "enterprisey",
-but it's quite useful!  It is *also* similar (again, if you squint) to very
-full-featured all encompassing engines with built-in editors, where you might say
-add a component type through some menu or GUI and it ends up being stored in
-some project config file.  In this case, instead of a project config file it's
-simply a bit of auxiliary rust code.
+global type registry like you might find in Java.  It feels a bit
+"enterprisey", but it's quite useful!  It is *also* similar (again, if you
+squint) to very full-featured all encompassing engines with built-in editors,
+where you might say add a component type through some menu or GUI and it ends
+up being stored in some project config file.  In this case, instead of a
+project config file it's simply a bit of auxiliary rust code.
 
 This pattern ends up being very useful!  Imagine you have some game state that
 can be loaded from a JSON config file.  Each resource and component can be
@@ -2734,7 +2726,3 @@ avoid them (you're way better than me), there are tons of other great benefits.
 I didn't really get a chance to talk about all the benefits of Rust or talk
 about my experiences with Rust in general, because I only have 30 minutes and
 this is probably way longer than 30 minutes at this point.
-
-(NOTE: I wanted to talk also about porting rust to consoles and the
-architectural patterns there, but this talk is *so long* already I just don't
-think it will fit)

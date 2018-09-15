@@ -204,7 +204,7 @@ recommend that for anybody.  However, there are actually quite a lot of indie
 devs who don't use Unreal / Unity style game engines and instead of using these
 "framework" style game engines instead go for more "library" style where they
 simply use individual libraries for specific features, or use small
-"frameworks"" that provide mostly rendering, audio, and input, and create the
+"frameworks" that provide mostly rendering, audio, and input, and create the
 basic structure of the games they make themselves.  (I once had a porting house
 call this "old school" development style, MUCH to my dismay)
 

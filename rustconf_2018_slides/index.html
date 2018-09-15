@@ -1,0 +1,1430 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-markdown
+					data-separator="^\r?\n---\r?\n$"
+					data-separator-notes="notes?:">
+					<textarea data-template>
+
+# Using Rust for Game Development
+#### (and What You Can Learn From It)
+
+&mdash; Catherine West (@Kyrenite)
+
+---
+
+### Question I keep being asked
+
+> How do you make a game from scratch in Rust?  I try and I keep running into
+> problems, I've heard this is called "fighting the borrow checker", what am I
+> doing wrong?
+
+Or maybe it's...
+
+> I'm trying to make a game and I keep needing `Rc<RefCell<T>>` and
+> `Arc<Mutex<T>>` and this is needlessly hard.
+
+Or maybe it's just...
+
+> I can see how rust is great for small things, or when security is paramount,
+> but it's very restrictive!  How do you make something like a video game with
+> this, especially a larger one?
+
+note: beginner, intermediate, advanced fighting the borrow checker
+
+---
+
+## An answer: The design of a medium sized game engine
+
+note: Medium sized answer, Short version of a longer talk, slides and longer talk will be online soon
+
+---
+
+### Rust makes certain (bad) patterns more painful than others, which is a good thing!
+
+* The patterns easiest for Rust are very often often the easiest generally <!-- .element: class="fragment" -->
+* I had to learn good patterns the hard way, without Rust's help <!-- .element: class="fragment" -->
+* For games, one of these is ECS design, but there are others <!-- .element: class="fragment" -->
+* Rust rewards data-oriented design with clear ownership <!-- .element: class="fragment" -->
+
+note: if you aren't familiar with ECS, we're building one, data-oriented is not just about perf in rust
+
+---
+
+### The simplest possible game engine - global mutable game state with "systems"
+
+```rust
+struct GameState { ... }
+
+fn main() {
+    let mut game_state = initial_game_state();
+    loop {
+        let input_state = capture_input_state();
+
+        input_system(&mut game_state, &mut input_state);
+
+        ai_system(&mut game_state)
+        physics_system(&mut game_state);
+
+        // ...
+
+        render_system(&mut game);
+        audio_system(&mut game);
+
+        wait_vsync();
+    }
+}
+```
+<!-- .element: class="stretch" -->
+
+---
+
+### What can we learn from this
+
+* I'm not recommending you make games this way! <!-- .element: class="fragment" -->
+* But you COULD <!-- .element: class="fragment" -->
+* And you would have minimal problems with the borrow checker. <!-- .element: class="fragment" -->
+* But it has some obvious downsides: <!-- .element: class="fragment" -->
+  * Everything is global and public, one mega-state <!-- .element: class="fragment" -->
+  * Everything is procedural and unchecked, systems have unlimited mutable access <!-- .element: class="fragment" -->
+  
+note: split borrows
+
+---
+
+## Let's improve on this design
+
+note: first we'll try to improve it the wrong way
+
+---
+
+## Too much object oriented design
+
+* What are the principles of OO <!-- .element: class="fragment" -->
+  * Single Responsibility Principle
+  * Encapsulation
+  * Abstraction
+  * Minimal Coupling
+
+note: We're going to use starbound OO mess I wrote
+
+---
+
+### Making a game engine with OO design
+
+```cpp
+typedef size_t EntityIndex;
+
+struct Physics {
+    Vec2F position;
+    Vec2F velocity;
+    float mass;
+};
+
+struct Player {
+    Physics physics;
+    HumanoidState humanoid;
+    float health;
+    EntityIndex focused_entity;
+    float food_level;
+    bool admin;
+    ...
+};
+
+struct Monster {
+    Physics physics;
+    MonsterAnimationState animation_state;
+    float health;
+    EntityIndex current_target;
+    DamageRegion damage_region;
+    ...
+};
+
+struct Npc {
+    Physics physics;
+    HumanoidState humanoid;
+    float health;
+    ...
+};
+
+struct GameState {
+    Vec<shared_ptr<void>> entities;
+    List<EntityIndex> player_ids;
+    MultiArray2D<Block> blocks;
+    ...
+};
+```
+<!-- .element: class="stretch" -->
+
+note: describer player, monster, npc.  shared_ptr<void> sucks.  *EntityIndex as
+internal pointer* Have to scan through entities vec, will improve later, very
+common in game engines.
+
+---
+
+### Using classes and interfaces
+
+```cpp
+typedef uint32_t EntityIndex;
+struct GameState;
+struct InputState { ... };
+struct RenderState { ... };
+struct Block { ... };
+
+class Entity {
+public:
+    virtual Vec2F position() const = 0;
+
+    virtual void input(InputState const& input_state) = 0;
+    virtual void update(GameState* game_state) = 0;
+    virtual void render(RenderState& render_state) = 0;
+};
+
+class Player : Entity {
+public:
+    Vec2F position() const override;
+    void input(InputState const& input_state) override;
+    void update(GameState* game_state) override;
+    void render(RenderState& render_state) override;
+private:
+    ...
+};
+
+class Monster : Entity { ... };
+
+class NPC : Entity { ... };
+
+struct GameState {
+    Vec<shared_ptr<Entity>> entities;
+    List<EntityIndex> player_ids;
+    MultiArray2D<Block> blocks;
+    ...
+};
+```
+<!-- .element: class="stretch" -->
+
+note: not many things common to all Entities, "update yourself", "render yourself" is very OO
+
+---
+
+### New requirements start coming in
+
+What if a monster needs to attack players with the lowest health first, make an accessor!
+
+```cpp
+class Player : Entity {
+public:
+    Vec2F position() const override;
+
+    void input(InputState const& input_state) override;
+    void update(GameState* game_state) override;
+    void render(RenderState& render_state) override;
+
+    float health() const;
+
+private:
+    ...
+};
+```
+
+---
+
+Monsters should not go after players who are marked as admins, make an accessor!
+
+```cpp
+class Player : Entity {
+public:
+    Vec2F position() const override;
+
+    void input(InputState const& input_state) override;
+    void update(GameState* game_state) override;
+    void render(RenderState& render_state) override;
+
+    float health() const;
+    bool is_admin() const;
+
+private:
+    ...
+};
+```
+
+---
+
+It's not clear who should be in charge of damage, either way add some accessors!
+Logical systems start being split up between classes.
+
+```cpp
+class Monster : Entity {
+public:
+    Vec2F position() const override;
+
+    void input(InputState const& input_state) override;
+    void update(GameState* game_state) override;
+    void render(RenderState& render_state) override;
+
+    DamageRegion const& damage_region() const;
+
+private:
+    ...
+};
+```
+
+note: describe this in full, this is a "method" with no clear place to be
+
+---
+
+The more layers you have for re-use, the more accessors you need.
+
+```cpp
+class Physics {
+public:
+    bool on_ground() const;
+
+private:
+    ...
+}
+
+class Player : Entity {
+public:
+    Vec2F position() const override;
+
+    void input(InputState const& input_state) override;
+    void update(GameState* game_state) override;
+    void render(RenderState& render_state) override;
+
+    float health() const;
+    bool on_ground() const;
+
+private:
+    Physics m_physics;
+    ...
+};
+```
+<!-- .element: class="stretch" -->
+
+note: stealth game, monsters are alerted by walking
+
+---
+
+How many accessors could you possibly need?
+
+```cpp
+class Player :
+  public virtual ToolUserEntity,
+  public virtual LoungingEntity,
+  public virtual ChattyEntity,
+  public virtual DamageBarEntity,
+  public virtual PortraitEntity,
+  public virtual NametagEntity,
+  public virtual PhysicsEntity,
+  public virtual EmoteEntity {
+
+public:
+  Player(PlayerConfigPtr config, Uuid uuid = Uuid());
+  Player(PlayerConfigPtr config, Json const& diskStore);
+  Player(PlayerConfigPtr config, ByteArray const& netStore);
+
+  ClientContextPtr clientContext() const;
+  void setClientContext(ClientContextPtr clientContext);
+
+  StatisticsPtr statistics() const;
+  void setStatistics(StatisticsPtr statistics);
+
+  QuestManagerPtr questManager() const;
+
+  Json diskStore();
+  ByteArray netStore();
+
+  EntityType entityType() const override;
+
+  void init(World* world, EntityId entityId, EntityMode mode) override;
+  void uninit() override;
+
+  Vec2F position() const override;
+  Vec2F velocity() const override;
+
+  Vec2F mouthPosition() const override;
+  Vec2F mouthOffset() const;
+  Vec2F feetOffset() const;
+  Vec2F headArmorOffset() const;
+  Vec2F chestArmorOffset() const;
+  Vec2F legsArmorOffset() const;
+  Vec2F backArmorOffset() const;
+
+  // relative to current position
+  RectF metaBoundBox() const override;
+
+  // relative to current position
+  RectF collisionArea() const override;
+
+  pair<ByteArray, uint64_t> writeNetState(uint64_t fromStep = 0) override;
+  void readNetState(ByteArray data, float interpolationStep = 0.0f) override;
+
+  void enableInterpolation(float extrapolationHint = 0.0f) override;
+  void disableInterpolation() override;
+
+  virtual Maybe<HitType> queryHit(DamageSource const& source) const override;
+  Maybe<PolyF> hitPoly() const override;
+
+  List<DamageNotification> applyDamage(DamageRequest const& damage) override;
+  List<DamageNotification> selfDamageNotifications() override;
+
+  void hitOther(EntityId targetEntityId, DamageRequest const& damageRequest) override;
+  void damagedOther(DamageNotification const& damage) override;
+
+  List<DamageSource> damageSources() const override;
+
+  bool shouldDestroy() const override;
+  void destroy(RenderCallback* renderCallback) override;
+
+  Maybe<EntityAnchorState> loungingIn() const override;
+  bool lounge(EntityId loungeableEntityId, size_t anchorIndex);
+  void stopLounging();
+
+  void revive(Vec2F const& footPosition);
+
+  List<Drawable> portrait(PortraitMode mode) const override;
+  bool underwater() const;
+
+  void setShifting(bool shifting);
+  void special(int specialKey);
+
+  void moveLeft();
+  void moveRight();
+  void moveUp();
+  void moveDown();
+  void jump();
+
+  void dropItem();
+
+  float toolRadius() const;
+  float interactRadius() const override;
+  List<InteractAction> pullInteractActions();
+
+  uint64_t currency(String const& currencyType) const;
+
+  float health() const override;
+  float maxHealth() const override;
+  DamageBarType damageBar() const override;
+  float healthPercentage() const;
+
+  float energy() const override;
+  float maxEnergy() const;
+  float energyPercentage() const;
+
+  float energyRegenBlockPercent() const;
+
+  bool energyLocked() const override;
+  bool fullEnergy() const override;
+  bool consumeEnergy(float energy) override;
+
+  float foodPercentage() const;
+
+  float breath() const;
+  float maxBreath() const;
+
+  float protection() const;
+
+  bool forceNude() const;
+
+  String description() const override;
+
+  List<LightSource> lightSources() const override;
+
+  Direction walkingDirection() const override;
+  Direction facingDirection() const override;
+
+  Maybe<Json> receiveMessage(ConnectionId sendingConnection, String const& message, JsonArray const& args = {}) override;
+
+  void update(uint64_t currentStep) override;
+
+  void render(RenderCallback* renderCallback) override;
+
+  PlayerInventoryPtr inventory() const;
+  // Returns the number of items from this stack that could be
+  // picked up from the world, using inventory tab filtering
+  size_t itemsCanHold(ItemPtr const& items) const;
+  // Adds items to the inventory, returning the overflow.
+  // The items parameter is invalid after use.
+  ItemPtr pickupItems(ItemPtr const& items);
+  // Pick up all of the given items as possible, dropping the overflow.
+  // The item parameter is invalid after use.
+  void giveItem(ItemPtr const& item);
+
+  void triggerPickupEvents(ItemPtr const& item);
+
+  bool hasItem(ItemDescriptor const& descriptor, bool exactMatch = false) const;
+  size_t hasCountOfItem(ItemDescriptor const& descriptor, bool exactMatch = false) const;
+  // altough multiple entries may match, they might have different
+  // serializations
+  ItemDescriptor takeItem(ItemDescriptor const& descriptor, bool consumePartial = false, bool exactMatch = false);
+  void giveItem(ItemDescriptor const& descriptor);
+
+  // Clear the item swap slot.
+  void clearSwap();
+
+  // Refresh worn equipment from the inventory
+  void refreshEquipment();
+
+  PlayerBlueprintsPtr blueprints() const;
+  bool addBlueprint(ItemDescriptor const& descriptor, bool showFailure = false);
+  bool blueprintKnown(ItemDescriptor const& descriptor) const;
+
+  bool addCollectable(String const& collectionName, String const& collectableName);
+
+  PlayerUniverseMapPtr universeMap() const;
+
+  PlayerCodexesPtr codexes() const;
+
+  PlayerTechPtr techs() const;
+  void overrideTech(Maybe<StringList> const& techModules);
+  bool techOverridden() const;
+
+  PlayerCompanionsPtr companions() const;
+
+  PlayerLogPtr log() const;
+
+  InteractiveEntityPtr bestInteractionEntity(bool includeNearby);
+  void interactWithEntity(InteractiveEntityPtr entity);
+
+  // Aim this player's target at the given world position.
+  void aim(Vec2F const& position);
+  Vec2F aimPosition() const override;
+
+  Vec2F armPosition(ToolHand hand, Direction facingDirection, float armAngle, Vec2F offset = {}) const override;
+  Vec2F handOffset(ToolHand hand, Direction facingDirection) const override;
+
+  Vec2F handPosition(ToolHand hand, Vec2F const& handOffset = {}) const override;
+  ItemPtr handItem(ToolHand hand) const override;
+
+  Vec2F armAdjustment() const override;
+
+  void setCameraFocusEntity(Maybe<EntityId> const& cameraFocusEntity) override;
+
+  void playEmote(HumanoidEmote emote) override;
+
+  bool canUseTool() const;
+
+  // "Fires" whatever is in the primary (left) item slot, or the primary fire
+  // of the 2H item, at whatever the current aim position is.  Will auto-repeat
+  // depending on the item auto repeat setting.
+  void beginPrimaryFire();
+  // "Fires" whatever is in the alternate (right) item slot, or the alt fire of
+  // the 2H item, at whatever the current aim position is.  Will auto-repeat
+  // depending on the item auto repeat setting.
+  void beginAltFire();
+
+  void endPrimaryFire();
+  void endAltFire();
+
+  // Triggered whenever the use key is pressed
+  void beginTrigger();
+  void endTrigger();
+
+  ItemPtr primaryHandItem() const;
+  ItemPtr altHandItem() const;
+
+  Uuid uuid() const;
+
+  PlayerMode modeType() const;
+  void setModeType(PlayerMode mode);
+  PlayerModeConfig modeConfig() const;
+
+  ShipUpgrades shipUpgrades();
+  void setShipUpgrades(ShipUpgrades shipUpgrades);
+
+  String name() const override;
+  void setName(String const& name);
+
+  Maybe<String> statusText() const override;
+  bool displayNametag() const override;
+  Vec3B nametagColor() const override;
+
+  void setBodyDirectives(String const& directives);
+  void setHairType(String const& group, String const& type);
+  void setHairDirectives(String const& directives);
+  void setEmoteDirectives(String const& directives);
+  void setFacialHair(String const& group, String const& type, String const& directives);
+  void setFacialMask(String const& group, String const& type, String const& directives);
+
+  String species() const override;
+  void setSpecies(String const& species);
+  Gender gender() const;
+  void setGender(Gender const& gender);
+  void setPersonality(Personality const& personality);
+
+  void setAdmin(bool isAdmin);
+  bool isAdmin() const override;
+
+  bool inToolRange() const override;
+  bool inToolRange(Vec2F const& aimPos) const override;
+  bool inInteractionRange() const;
+  bool inInteractionRange(Vec2F aimPos) const;
+
+  void addParticles(List<Particle> const& particles) override;
+  void addSound(String const& sound, float volume = 1.0f) override;
+
+  bool wireToolInUse() const;
+  void setWireConnector(WireConnector* wireConnector) const;
+
+  void addEphemeralStatusEffects(List<EphemeralStatusEffect> const& statusEffects) override;
+  ActiveUniqueStatusEffectSummary activeUniqueStatusEffectSummary() const override;
+
+  float powerMultiplier() const override;
+
+  bool isDead() const;
+  void kill();
+
+  void setFavoriteColor(Vec4B color);
+  Vec4B favoriteColor() const override;
+
+  // Starts the teleport animation sequence, locking player movement and
+  // preventing some update code
+  void teleportOut(String const& animationType = "default", bool deploy = false);
+  void teleportIn();
+  void teleportAbort();
+
+  bool isTeleporting() const;
+  bool isTeleportingOut() const;
+  bool canDeploy();
+  void deployAbort(String const& animationType = "default");
+  bool isDeploying() const;
+  bool isDeployed() const;
+
+  void setBusyState(PlayerBusyState busyState);
+
+  // A hard move to a specified location
+  void moveTo(Vec2F const& footPosition);
+
+  List<String> pullQueuedMessages();
+  List<ItemPtr> pullQueuedItemDrops();
+
+  void queueUIMessage(String const& message) override;
+  void queueItemPickupMessage(ItemPtr const& item);
+
+  void addChatMessage(String const& message);
+  void addEmote(HumanoidEmote const& emote);
+
+  List<ChatAction> pullPendingChatActions() override;
+
+  float beamGunRadius() const override;
+
+  bool instrumentPlaying() override;
+  void instrumentEquipped(String const& instrumentKind) override;
+  void interact(InteractAction const& action) override;
+  void addEffectEmitters(StringSet const& emitters) override;
+  void requestEmote(String const& emote) override;
+
+  ActorMovementController* movementController() override;
+  StatusController* statusController() override;
+
+  List<PhysicsForceRegion> forceRegions() const override;
+
+  SongbookPtr songbook() const;
+
+  void finalizeCreation();
+
+  float timeSinceLastGaveDamage() const;
+  EntityId lastDamagedTarget() const;
+
+  bool invisible() const;
+
+  void animatePortrait();
+
+  bool isOutside();
+
+  void dropSelectedItems(function<bool(ItemPtr)> filter);
+  void dropEverything();
+
+  bool isPermaDead() const;
+
+  bool interruptRadioMessage();
+  Maybe<RadioMessage> pullPendingRadioMessage();
+  void queueRadioMessage(Json const& messageConfig, float delay = 0);
+  void queueRadioMessage(RadioMessage message);
+
+  // If a cinematic should play, returns it and clears it.  May stop cinematics
+  // by returning a null Json.
+  Maybe<Json> pullPendingCinematic();
+  void setPendingCinematic(Json const& cinematic, bool unique = false);
+
+  void setInCinematic(bool inCinematic);
+
+  Maybe<pair<Maybe<StringList>, float>> pullPendingAltMusic();
+
+  Maybe<PlayerWarpRequest> pullPendingWarp();
+  void setPendingWarp(String const& action, Maybe<String> const& animation = {}, bool deploy = false);
+
+  Maybe<pair<Json, RpcPromiseKeeper<Json>>> pullPendingConfirmation();
+  void queueConfirmation(Json const& dialogConfig, RpcPromiseKeeper<Json> const& resultPromise);
+
+  AiState const& aiState() const;
+  AiState& aiState();
+
+  // In inspection mode, scannable, scanned, and interesting objects will be
+  // rendered with special highlighting.
+  bool inspecting() const;
+
+  // Will return the highlight effect to give an inspectable entity when inspecting
+  EntityHighlightEffect inspectionHighlight(InspectableEntityPtr const& inspectableEntity) const;
+
+  Vec2F cameraPosition();
+
+  using Entity::setTeam;
+
+private:
+  // ...
+};
+```
+<!-- .element: class="stretch" -->
+
+note: aiState as the worst example
+
+---
+
+### Let's try this in Rust
+
+First, let's start with the simplest OO C++ version
+
+```cpp
+class Entity {
+public:
+    virtual Vec2F position() const = 0;
+
+    void input(InputState const& input_state) = 0;
+    void update(GameState* game_state) = 0;
+    void render(RenderState& render_state) = 0;
+};
+
+struct GameState {
+    Vec<shared_ptr<Entity>> entities;
+    List<EntityIndex> player_ids;
+    ...
+};
+```
+
+---
+
+And translate this into Rust
+
+```rust
+pub trait Entity {
+    fn position(&self) -> Vec2F;
+
+    fn input(&mut self, input_state: &InputState);
+    fn update(&mut self, game_state: &mut GameState);
+    fn render(&mut self, render_state: &mut RenderState);
+}
+
+pub struct GameState {
+    entities: Vec<Option<Box<Entity>>>,
+    player_ids: Vec<EntityIndex>,
+    ...
+}
+```
+
+note: mutable aliasing!  other solutions but they're all pretty bad
+
+---
+
+I guess we need interior mutability?  This seems hard.
+
+```rust
+pub trait Entity {
+    fn position(&self) -> Vec2F;
+
+    fn input(&self, input_state: &InputState);
+    fn update(&self, game_state: &GameState);
+    fn render(&self, render_state: &mut RenderState);
+}
+
+pub struct GameState {
+    entities: RefCell<Vec<Option<Box<Entity>>>>,
+    player_ids: RefCell<Vec<EntityIndex>>,
+    ...
+}
+```
+
+---
+
+### It gets worse
+
+```rust
+pub trait Entity {
+    fn position(&self) -> Vec2F;
+    fn tags<'a>(&'a self) -> &'a Vec<Tag>;
+
+    ...
+}
+```
+
+---
+
+The larger the structure is, the more you borrow
+
+```rust
+pub struct GameState { ... }
+
+impl GameState {
+    fn block<'a>(&'a self, index: Vector2<i32>) -> &'a Block { ... }
+    
+    // Huge number of additional methods
+}
+```
+
+Using traits makes it harder to refactor to remove those borrows
+
+```rust
+pub trait GameState {
+    fn block<'a>(&'a self, index: Vector2<i32>) -> &'a Block;
+
+    // Huge number of additional trait methods
+}
+```
+
+---
+
+### Takeaways for Game Development and Rust development in general
+
+* For games, OO hurts more than it helps. <!-- .element: class="fragment" -->
+* Thinking about "objects" in gamedev sounds superficially appealing, but it can
+  actually be somewhat harmful <!-- .element: class="fragment" -->
+* In games, most concerns are cross cutting, not everything can be a method <!-- .element: class="fragment" -->
+* Sometimes bad designs will fail faster in Rust <!-- .element: class="fragment" -->
+* I find it often helpful to force myself to think about data structures
+  independently from functions that operate on them. <!-- .element: class="fragment" -->
+
+---
+
+## Back to the beginning
+
+Simple data structures, no traits or methods
+
+```rust
+type usize = EntityIndex;
+struct HumanoidState { ... }
+enum MonsterAnimationState { ... }
+struct DamageRegion { ... }
+struct NpcBehavior { ... }
+
+struct Physics {
+    position: Vector2<f32>,
+    velocity: Vector2<f32>,
+    mass: f32,
+}
+
+struct Player {
+    physics: Physics,
+    humanoid: HumanoidState,
+    health: f32,
+    focused_entity: EntityIndex,
+    food_level: f32,
+    admin: bool,
+    ...
+}
+
+struct Monster {
+    physics: Physics,
+    animation_state: MonsterAnimationState,
+    health: f32,
+    current_target: EntityIndex,
+    damage_region: DamageRegion,
+    ...
+}
+
+struct Npc {
+    physics: Physics,
+    humanoid: HumanoidState,
+    health: f32,
+    behavior: NpcBehavior,
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+note: rust version of what we had in C++
+
+---
+
+And the simple update loop structure with "systems"
+
+```rust
+struct Player { ... }
+struct Monster { ... }
+struct Npc { ... }
+
+enum Entity {
+    Player(Player),
+    Monster(Monster),
+    Npc(Npc),
+}
+
+struct GameState {
+    entities: Vec<Option<Entity>>,
+    players: Vec<EntityIndex>,
+    ...
+}
+
+fn main() {
+    let mut game_state = initial_game_state();
+
+    loop {
+        let input_state = capture_input_state();
+
+        player_control_system(&mut game_state, &input_state);
+        npc_behavior_system(&mut game_state);
+        monster_behavior_system(&mut game_state);
+
+        physics_system(&mut game_state);
+
+        // ...
+
+        render_system(&mut game);
+        audio_system(&mut game);
+
+        wait_vsync();
+    }
+}
+```
+<!-- .element: class="stretch" -->
+
+note: you can actually stop here, e.g. game jams
+
+---
+
+Let's unify our Entity type
+
+```rust
+type usize = EntityIndex;
+
+struct Physics { ... }
+struct HumanoidState { ... }
+enum MonsterAnimationState { ... }
+struct DamageRegion { ... }
+struct NpcBehavior { ... }
+
+struct PlayerState {
+    focused_entity: EntityIndex,
+    food_level: f32,
+    admin: bool,
+}
+
+struct MonsterState {
+    current_target: EntityIndex,
+    animation_state: MonsterAnimationState,
+}
+
+struct NpcState {
+    behavior: NpcBehavior,
+}
+
+struct Entity {
+    physics: Option<Physics>,
+    health: Option<f32>,
+    humanoid: Option<HumanoidState>,
+    player: Option<PlayerState>,
+    monster: Option<MonsterState>,
+    npc: Option<NpcState>,
+    ...
+}
+
+struct GameState {
+    entities: Vec<Option<Entity>>,
+    players: Vec<EntityIndex>,
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+---
+
+We can go a bit further, generalizing the fields on our entities
+
+```rust
+type usize = EntityIndex;
+
+struct Physics { ... }
+struct HumanoidState { ... }
+enum MonsterAnimationState { ... }
+struct DamageRegion { ... }
+struct NpcBehavior { ... }
+
+struct Aggression {
+    current_target: EntityIndex,
+}
+
+struct Health(f32);
+
+struct Hunger {
+    food_level: f32,
+}
+
+struct PlayerState {
+    focused_entity: EntityIndex,
+    admin: bool,
+}
+
+struct Entity {
+    physics: Option<Physics>,
+    huamnoid_state: Option<HumanoidState>,
+    monster_animation: Option<MonsterAnimation>,
+    npc_behavior: Option<NpcBehavior>,
+    aggression: Option<Aggression>,
+    health: Option<Health>,
+    hunger: Option<Hunger>,
+    player: Option<PlayerState>,
+    ...
+}
+
+struct GameState {
+    entities: Vec<Option<Entity>>,
+    players: Vec<EntityIndex>,
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+note: Aggression, NPCs that are aggressive, but player's aren't controlled by AI
+
+---
+
+Now, we'll transform our "array of structs" into a "struct of arrays".
+
+```rust
+type EntityIndex = usize;
+
+struct PhysicsComponent { ... }
+struct HumanoidAnimationComponent { ... }
+struct HumanoidItemsComponent { ... }
+struct MonsterAnimationComponent { ... }
+struct NpcBehaviorComponent { ... }
+struct AggressionComponent { ... }
+struct HealthComponent { ... }
+struct HungerComponent { ... }
+struct PlayerComponent { ... }
+
+struct GameState {
+    physics_components: Vec<Option<PhysicsComponent>>,
+    humanoid_animation_components: Vec<Option<HumanoidAnimationComponent>>,
+    humanoid_items_components: Vec<Option<HumanoidItemsComponent>>,
+    monster_animation_components: Vec<Option<MonsterAnimationComponent>>,
+    npc_behavior_components: Vec<Option<NpcBehaviorComponent>>,
+    aggression_components: Vec<Option<AggressionComponent>>,
+    health_components: Vec<Option<HealthComponent>>,
+    hunger_components: Vec<Option<HungerComponents>>,
+    player_components: Vec<Option<PlayerComponents>>,
+
+    players: Vec<EntityIndex>,
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+We'll also give the parts of our entities a new name: Components
+
+note: Biggest part of ECS explanations, useful for perf but not critical, enables a few more transformations
+
+---
+
+### Takeaways for Rust users in general:
+
+* Thinking about JUST the structure of state is really powerful. <!-- .element: class="fragment" -->
+* You can do a LOT with Vecs and indexes into Vecs. <!-- .element: class="fragment" -->
+* Instead of self-borrowing, arena allocators, Rc, etc... try Vecs and indexes
+  first. <!-- .element: class="fragment" -->
+* The Vec / index pattern as shown still has some problems <!-- .element: class="fragment" -->
+
+note: explain index "use after free"
+
+---
+
+### Generational indexes are awesome
+
+We need a special kind of super-index
+
+```rust
+#[derive(Eq, PartialEq, etc...)]
+pub struct GenerationalIndex {
+    index: usize,
+    generation: u64,
+}
+
+impl GenerationalIndex {
+    pub index(&self) -> usize { ... }
+}
+```
+
+And we need to make an allocator for those super-indexes
+
+```rust
+struct AllocatorEntry {
+    is_live: bool,
+    generation: u64,
+}
+
+pub struct GenerationalIndexAllocator {
+    entries: Vec<AllocatorEntry>,
+    free: Vec<usize>,
+}
+
+impl GenerationalIndexAllocator {
+    pub fn allocate(&mut self) -> GenerationalIndex { ... }
+    pub fn deallocate(&mut self, index: GenerationalIndex) -> bool { ... }
+    pub fn is_live(&self, index: GenerationalIndex) -> bool { ... }
+}
+```
+
+---
+
+We'll go ahead and make a type a bit better than `Vec<Option<T>>` to store data
+associated with generational indexes:
+
+```rust
+struct ArrayEntry<T> {
+    value: T,
+    generation: u64,
+}
+
+// An associative array from GenerationalIndex to some Value T.
+pub struct GenerationalIndexArray<T>(Vec<Option<ArrayEntry<T>>>);
+
+impl<T> GenerationalIndexArray<T> {
+    // Set the value for some generational index.  May overwrite past generation
+    // values.
+    pub fn set(&mut self, index: GenerationalIndex, value: T) { ... }
+
+    // Gets the value for some generational index, the generation must match.
+    pub fn get(&self, index: GenerationalIndex) -> Option<&T> { ... }
+    pub fn get_mut(&mut self, index: GenerationalIndex) -> Option<&mut T> { ... }
+}
+```
+<!-- .element: class="stretch" -->
+
+---
+
+### Putting it all together
+
+```rust
+struct PhysicsComponent { ... }
+struct HumanoidAnimationComponent { ... }
+struct HumanoidItemsComponent { ... }
+struct MonsterAnimationComponent { ... }
+struct NpcBehaviorComponent { ... }
+struct AggressionComponent { ... }
+struct HealthComponent { ... }
+struct HungerComponent { ... }
+struct PlayerComponent { ... }
+
+type Entity = GenerationalIndex;
+type EntityMap<T> = GenerationalIndexArray<T>;
+
+struct GameState {
+    entity_allocator: GenerationalIndexAllocator,
+
+    physics_components: EntityMap<PhysicsComponent>,
+    humanoid_animation_components: EntityMap<HumanoidAnimationComponent>,
+    humanoid_items_components: EntityMap<HumanoidItemsComponent>,
+    monster_animation_components: EntityMap<MonsterAnimationComponent>,
+    npc_behavior_components: EntityMap<NpcBehaviorComponent>,
+    aggression_components: EntityMap<AggressionComponent>,
+    health_components: EntityMap<HealthComponent>,
+    hunger_components: EntityMap<HungerComponents>,
+    player_components: EntityMap<PlayerComponents>,
+
+    players: Vec<Entity>,
+
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+We're in the home stretch now, this is basically an ECS system
+
+---
+
+### Takeaways for Rust users in general:
+
+* Generational indexes are awesome <!-- .element: class="fragment" -->
+* They solve most of the problems of regular indexing with Vec <!-- .element: class="fragment" -->
+* There's a crate for it! (slotmap crate) <!-- .element: class="fragment" -->
+* It's missing a crucial feature though: independent allocation <!-- .element: class="fragment" -->
+
+---
+
+### Dynamic typing is nice in controlled quantities
+
+First there's a crate we need: `anymap`.
+
+```rust
+pub struct AnyMap { ... }
+
+impl AnyMap {
+    pub fn insert<T>(&mut self, t: T) { ... }
+    pub fn get<T>(&mut self) -> Option<&T> { ... }
+    pub fn get_mut<T>(&mut self) -> Option<&mut T> { ... }
+}
+```
+
+---
+
+Adding a component always has to change our game state
+
+```rust
+struct PhysicsComponent { ... }
+struct HumanoidAnimationComponent { ... }
+struct HumanoidItemsComponent { ... }
+struct MonsterAnimationComponent { ... }
+struct NpcBehaviorComponent { ... }
+struct AggressionComponent { ... }
+struct HealthComponent { ... }
+struct HungerComponent { ... }
+struct PlayerComponent { ... }
+
+type Entity = GenerationalIndex;
+type EntityMap<T> = GenerationalIndexArray<T>;
+
+struct GameState {
+    entity_allocator: GenerationalIndexAllocator,
+
+    physics_components: EntityMap<PhysicsComponent>,
+    humanoid_animation_components: EntityMap<HumanoidAnimationComponent>,
+    humanoid_items_components: EntityMap<HumanoidItemsComponent>,
+    monster_animation_components: EntityMap<MonsterAnimationComponent>,
+    npc_behavior_components: EntityMap<NpcBehaviorComponent>,
+    aggression_components: EntityMap<AggressionComponent>,
+    health_components: EntityMap<HealthComponent>,
+    hunger_components: EntityMap<HungerComponents>,
+    player_components: EntityMap<PlayerComponents>,
+
+    players: Vec<Entity>,
+
+    ...
+}
+```
+<!-- .element: class="stretch" -->
+
+note: what we had before, list of types, comes up a lot
+
+---
+
+Let's use AnyMap to store our components
+
+```rust
+type Entity = GenerationalIndex;
+type EntityMap<T> = GenerationalIndexArray<T>;
+
+struct GameState {
+    entity_allocator: GenerationalIndexAllocator,
+    // We're assuming that this will contain only types of the pattern
+    // `EntityMap<T>`.  This is dynamic, so the type system stops being helpful
+    entity_components: AnyMap,
+
+    players: Vec<Entity>,
+    ...
+}
+```
+
+---
+
+We can go further, keeping *all* of our data inside AnyMap.  Let's also change
+the name "GameState" to something more accurate:
+
+```rust
+type Entity = GenerationalIndex;
+type EntityMap<T> = GenerationalIndexArray<T>;
+
+struct ECS {
+    entity_allocator: GenerationalIndexAllocator,
+    // Full of types like `EntityMap<T>`.
+    entity_components: AnyMap,
+
+    // Non-entity state data
+    resources: AnyMap,
+}
+```
+
+Since the type system is no longer as helpful, we'll show what kind of interface
+such a struct might have:
+
+```rust
+impl ECS {
+    fn get_component<T: Component>(&self) -> Option<&EntityMap<T>> { ... }
+    fn get_component_mut<T: Component>(&mut self) -> Option<&mut EntityMap<T>> { ... }
+
+    fn get_resource<T: Resource>(&self) -> Option<&T> { ... }
+    fn get_resource_mut<T: Resource>(&mut self) -> Option<&mut T> { ... }
+}
+```
+
+---
+
+### (ERRATA)
+
+This was an awkward place to stop, because as Niko pointed out to me after the
+talk, after placing components and resources into AnyMap, you go back ot not
+being able to "split-borrow" different entities and resources mutably.  The NEXT
+step after this is to place every component and resource in its own RwLock,
+which both fixes this and also allows different systems which do not mutate the
+same components / resources to be run in parallel, but I wasn't able to talk
+about parallelization at all due to time constraints.
+
+---
+
+### The "registry" pattern
+
+We'll make a "registry" for components
+
+```rust
+pub struct ComponentRegistry { ... }
+
+impl ComponentRegistry {
+    // Registers a component, components must implement a special trait to allow
+    // e.g. loading from a json config.
+    pub fn register_component<T: Component>(&mut self) { ... }
+
+    // Sets up entries for all registered components to the given ECS
+    pub fn setup_ecs(&self, ecs: &mut ECS) { ... }
+
+    // Loads a given entity into the given ECS, loading all the components from
+    // the given JSON
+    pub fn load_entity(&self, json: Json, ecs: &mut ECS) -> Entity { ... }
+}
+```
+
+And we'll also make one for resources
+
+```rust
+pub struct ResourceRegistry { ... }
+
+impl ResourceRegistry {
+    // The Resource trait provides loading from json and other things.
+    pub fn register_resource<T: Resource>(&mut self) { ... }
+
+    // Sets up entries for all registered resources to the given ECS
+    pub fn setup_ecs(&self, ecs: &mut ECS) { ... }
+
+    // Adds a resource to the given ECS by loading from the given JSON.
+    pub fn load_resource(&self, json: Json, ecs: &mut ECS) { ... }
+}
+```
+
+---
+
+We can add all of our individual "registries" to one big top-level "registry"
+
+```rust
+fn load_component_registry() -> ComponentRegistry {
+    let mut component_registry = ComponentRegistry::new();
+
+    component_registry.register::<PhysicsComponent>();
+    component_registry.register::<PlayerComponent>();
+    ...
+}
+
+fn load_resource_registry() -> ResourceRegistry {
+    let mut resource_registry = ResourceRegistry::new();
+
+    resource_registry.register::<BlocksResource>();
+    ...
+}
+
+pub struct Registry {
+    pub components: ComponentRegistry,
+    pub resources: ResourceRegistry,
+}
+
+lazy_static! {
+    pub static ref REGISTRY: Registry = Registry {
+        components: load_component_registry(),
+        resources: load_resource_registry(),
+    };
+}
+```
+<!-- .element: class="stretch" -->
+
+---
+
+### Takeaways for Rust in general:
+
+* Dynamic typing is powerful and useful, and must be used with care <!-- .element: class="fragment" -->
+* It helps break up the problem of "everything depends on everything else" <!-- .element: class="fragment" -->
+* Usually when you need dynamic typing like this, you also need "type registries" <!-- .element: class="fragment" -->
+* This pattern is actually common in OO, e.g. IComponent, ComponentFactory, but often overly complex. <!-- .element: class="fragment" -->
+* We can simplify by using AnyMap <!-- .element: class="fragment" -->
+* AnyMap is awesome <!-- .element: class="fragment" -->
+
+---
+
+## Closing thoughts
+
+* I never talked much about performance implications of ECS on purpose, but it's
+  very beneficial. <!-- .element: class="fragment" -->
+* I actually think data-oriented design means more for Rust than in other
+  languages, in Rust this is more than just perf (but it enables perf). <!-- .element: class="fragment" -->
+* You may have heard a lot of this before (ECS design, OO is overrated, etc)
+  <!-- .element: class="fragment" -->
+* If you have, hopefully it helped clarify things <!-- .element: class="fragment" -->
+* I hope you found at least some good design ideas you might not have thought of
+  otherwise <!-- .element: class="fragment" -->
+* There are a LOT of ways to make games, this is just one of them <!-- .element: class="fragment" -->
+
+note: lots of good gamedev crates that I didn't talk about, obv specs
+
+---
+
+### Thank You
+
+					</textarea>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				],
+                width: 1440,
+                height: 1260,
+                transition: 'none',
+                pdfSeparateFragments: false,
+                markdown: {
+                    smartypants: true,
+                    smartLists: true,
+                },
+			});
+		</script>
+	</body>
+</html>

@@ -32,12 +32,12 @@ releasing it, which I *promised* I would do in a timely manner.
 I'm not super happy with this, and in retrospect I think many of the things I
 cut for the 30-ish minute talk were probably wise to cut.  I think the parts
 about console development are wildly speculative and not that helpful, and the
-part at the end about language boundaries being particularly difficult is, while
-true, kind of besides the point.  However, people seemed very interested and are
-(very rightly) reminding me that I haven't posted this yet, so rather than delay
-any further I'm going to give you the very lightly edited text version of the
-talk that I made.  Keep in mind this was before I realized I would NEVER fit
-this into 30 minutes :).
+part at the end about language boundaries being particularly difficult is,
+while true, kind of beside the point.  However, people seemed very interested
+and are (very rightly) reminding me that I haven't posted this yet, so rather
+than delay any further I'm going to give you the very lightly edited text
+version of the talk that I made.  Keep in mind this was before I realized I
+would NEVER fit this into 30 minutes :).
 
 
 Without further ado...

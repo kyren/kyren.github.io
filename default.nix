@@ -1,14 +1,19 @@
-with (import <nixpkgs> {});
-let
-  env = bundlerEnv {
-    name = "kyren-blog";
-    inherit ruby;
+with import <nixpkgs> { };
+
+let jekyll_env = bundlerEnv rec {
+    name = "jekyll_env";
+    ruby = ruby_2_5;
     gemfile = ./Gemfile;
     lockfile = ./Gemfile.lock;
     gemset = ./gemset.nix;
   };
-in stdenv.mkDerivation {
-  name = "kyren-blog";
-  buildInputs = [env ruby];
-}
+in
+  stdenv.mkDerivation rec {
+    name = "jekyll_env";
+    buildInputs = [ jekyll_env ];
+
+    shellHook = ''
+      exec ${jekyll_env}/bin/jekyll serve --watch
+    '';
+  }
 

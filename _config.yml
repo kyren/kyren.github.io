@@ -26,8 +26,7 @@ github_username:  kyren
 
 # Build settings
 markdown: kramdown
-# theme: minima
-theme: motherfucking-jekyll-theme
+theme: minima
 
 host: 0.0.0.0
 port: 4000
@@ -38,10 +37,5 @@ port: 4000
 exclude:
   - Gemfile
   - Gemfile.lock
-  - node_modules
-  - vendor/bundle/
-  - vendor/cache/
-  - vendor/gems/
-  - vendor/ruby/
   - default.nix
-  - build.sh
+  - build_gemset.sh

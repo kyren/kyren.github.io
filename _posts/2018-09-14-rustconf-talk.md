@@ -884,20 +884,21 @@ struct World {
 So one point before we go on, why am I bothering with this `EntityId` stuff
 here?  This is C++, why can't we use pointers?  Well, it turns out that doing
 this is *very* unsafe, so the pattern that all game engines I've ever (in
-languages without a fancy garbage collector) seen adopt is actually to have some
-kind of map from some form of "entity id" to an actual entity pointer and keep
-that in a single location.  The reason for this is that, say in C++, let's say
-every entity keeps a shared_ptr<Entity> or some kind of downcasted shared_ptr.
-The problem then becomes that World is now a giant ball of reference-cycles and
-entities may never be destructed, and this is a huge problem.  On the other side
-of this, if they kept raw pointers, they would be continually invalidated and
-this tends to lead to hard to solve ephemeral bugs and so more or less nobody
-does this.  You *could* use for example weak_ptr, and this is sometimes used,
-but there tend to be other reasons to use ids because they're useful for
-networking and can more easily be saved and loaded from disk.  This is
-interesting, because this is the major change that we had to make in our
-"UR-game-architecture" to make it compatible with Rust, but it's very *very*
-common in game engines in general!
+languages without a fancy garbage collector) seen adopt is actually to have
+some kind of map from some form of "entity id" to an actual entity pointer and
+keep that in a single location.  The reason for this is that, say in C++, let's
+say every entity keeps a shared_ptr<Entity> or some kind of downcasted
+shared_ptr.  The problem then becomes that World is now a giant ball of
+reference-cycles and entities may never be destructed, and this is a huge
+problem.  On the other side of this, if they kept raw pointers, they would be
+continually invalidated and this tends to lead to hard to solve ephemeral bugs
+and so more or less nobody does this (least, nobody keeps raw pointers /
+references around for "very long").  You *could* use for example weak_ptr, and
+this is sometimes used, but there tend to be other reasons to use ids because
+they're useful for networking and can more easily be saved and loaded from
+disk.  This is interesting, because this is the major change that we had to
+make in our "UR-game-architecture" to make it compatible with Rust, but it's
+very *very* common in game engines in general!
 
 (In game engines, EntityId is usually something like an int that counts up,
 possibly a uint64_t that doesn't round or a uint32_t that does round, and this

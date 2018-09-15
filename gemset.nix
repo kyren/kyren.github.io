@@ -161,6 +161,15 @@
     };
     version = "2.5.0";
   };
+  motherfucking-jekyll-theme = {
+    dependencies = ["jekyll"];
+    source = {
+      remotes = ["https://rubygems.org"];
+      sha256 = "0iad9vi3pj0hqns7ki92wq16qwqnnm8qjchp0c23fi8ma7vybj36";
+      type = "gem";
+    };
+    version = "0.1.0";
+  };
   pathutil = {
     dependencies = ["forwardable-extended"];
     source = {

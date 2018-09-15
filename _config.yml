@@ -26,7 +26,7 @@ github_username:  kyren
 
 # Build settings
 markdown: kramdown
-theme: minima
+# theme: minima
 
 host: 0.0.0.0
 port: 4000

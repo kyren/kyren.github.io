@@ -1,0 +1,15 @@
+<hr />
+<footer class="site-footer">
+  {% if site.footer_title %}
+  <h1>
+    {{ site.footer_title | escape }}
+  </h1>
+  {% endif %}
+
+  <div class="wrapper">
+    <div class="footer-col footer-col-3">
+      <p>{{ site.footer_description | escape }}</p>
+    </div>
+  </div>
+
+</footer>

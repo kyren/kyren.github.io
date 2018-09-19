@@ -1688,7 +1688,7 @@ methods, no functions, only the data types.  This will be very similar to the
 Mario 64 example "UR-architecture" above, with a few small additions:
 
 ```rust
-type usize = EntityIndex;
+type EntityIndex = usize;
 
 struct Physics {
     position: Vector2<f32>,
@@ -1847,7 +1847,7 @@ can do better.  Let's go back to having a unified Entity type like the Mario 64
 example:
 
 ```rust
-type usize = EntityIndex;
+type EntityIndex = usize;
 
 // All the different types of fields that an Entity can have, grouped somewhat
 // logically...
@@ -2091,7 +2091,7 @@ developers:
 
   * Thinking about JUST the structure of state is really powerful, often times
     "methods" and "objects" get in the way.  Nobody really thinks that having
-    methods on your structs is "too much OO", but it DOES couple your procudures
+    methods on your structs is "too much OO", but it DOES couple your procedures
     to your data, even if only organizationally.  Both data structure design and
     simple module organization are important, but don't conflate them!  I'm
     convinced that "ECS design" in games is so great because it forces you to

@@ -1,0 +1,12 @@
+[package]
+name = "wasm_test"
+version = "0.1.0"
+
+[dependencies]
+stdweb = "*"
+stdweb-derive = "*"
+serde = "*"
+serde_derive = "*"
+
+[build-dependencies]
+webgl_generator = "*"

@@ -31,5 +31,5 @@ port: 4000
 exclude:
   - Gemfile
   - Gemfile.lock
-  - default.nix
-  - build_gemset.sh
+  - shell.nix
+  - gemset.nix

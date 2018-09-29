@@ -1,4 +1,3 @@
-with import <nixpkgs> {};
 let
   moz_overlay = import (
     builtins.fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz
@@ -7,6 +6,17 @@ let
   nixpkgs = import <nixpkgs> {
     overlays = [ moz_overlay ];
   };
+in with nixpkgs;
+let
+  rust_channel = rustChannelOf {
+    date = "2018-09-24";
+    channel = "nightly";
+  };
+
+  rust = rust_channel.rust.override {
+    targets = [ "wasm32-unknown-unknown" ];
+    extensions = [ "rust-src" ];
+  };
 
   jekyll_env = bundlerEnv rec {
     name = "jekyll_env";
@@ -14,14 +24,6 @@ let
     gemfile = ./Gemfile;
     lockfile = ./Gemfile.lock;
     gemset = ./gemset.nix;
-  };
-
-  rust = (nixpkgs.rustChannelOf {
-    date = "2018-09-24";
-    channel = "nightly";
-  }).rust.override {
-    targets = [ "wasm32-unknown-unknown" ];
-    extensions = [ "rust-src" ];
   };
 
   wasm-bindgen-version = "0.2.23";
@@ -42,21 +44,29 @@ let
       mkdir -p $out
       cp -r * $out/
       cp ${wasm-bindgen-lockfile} $out/Cargo.lock
-      touch $out/crates/cli/Cargo.lock
     '';
   };
 
-  wasm-bindgen-cli = rustPlatform.buildRustPackage rec {
+  buildRustPackage = callPackage (import <nixpkgs/pkgs/build-support/rust>) {
+		rust = {
+			rustc = rust_channel.rust;
+			cargo = rust_channel.cargo;
+		};
+  };
+
+  wasm-bindgen-cli = buildRustPackage rec {
     version = wasm-bindgen-version;
     name = "wasm-bindgen-cli-${wasm-bindgen-version}";
 
+    buildInputs = [ openssl ];
+    nativeBuildInputs = [ pkgconfig ];
+
     src = wasm-bindgen-src;
-    sourceRoot = "${src.name}/crates/cli";
+    cargoBuildFlags = [ "-p wasm-bindgen-cli" ];
 
     cargoSha256 = "16wxnx34svkjiik70hm3gr0z8pvgarrd00hkbh8gs1kpskd87jp4";
   };
 in
-  with nixpkgs;
   mkShell rec {
     buildInputs = [
       bundler

@@ -1,12 +1,23 @@
 [package]
-name = "wasm_test"
+name = "block_lighting_demos"
 version = "0.1.0"
 
-[dependencies]
-stdweb = "*"
-stdweb-derive = "*"
-serde = "*"
-serde_derive = "*"
+[lib]
+crate-type = ["cdylib"]
 
-[build-dependencies]
-webgl_generator = "*"
+[dependencies]
+js-sys = "*"
+wasm-bindgen = "*"
+
+[dependencies.web-sys]
+version = "*"
+features = [
+  'Document',
+  'Element',
+  'HtmlCanvasElement',
+  'WebGlBuffer',
+  'WebGlRenderingContext',
+  'WebGlProgram',
+  'WebGlShader',
+  'Window',
+]

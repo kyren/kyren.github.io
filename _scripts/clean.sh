@@ -3,6 +3,7 @@
 set -e
 cd "`dirname \"$0\"`/.."
 
+rm -f .sass-cache/
 rm -rf _site
 rm -rf _source/block_lighting_demos/target
 rm -rf _source/block_lighting_demos/node_modules

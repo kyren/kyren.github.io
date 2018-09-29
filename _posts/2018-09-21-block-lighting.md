@@ -1,7 +1,6 @@
 ---
 layout: post
 title: A Somewhat Novel 2D Block Lighting Algorithm
-published: false
 ---
 
 <style>

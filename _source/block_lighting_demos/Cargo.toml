@@ -15,8 +15,10 @@ wasm-bindgen = "*"
 [dependencies.web-sys]
 version = "*"
 features = [
+  'console',
   'Document',
   'Element',
+  'HtmlElement',
   'HtmlCanvasElement',
   'WebGlBuffer',
   'WebGlRenderingContext',

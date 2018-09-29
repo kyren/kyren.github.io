@@ -4,11 +4,80 @@ extern crate web_sys;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{WebGlProgram, WebGlRenderingContext, WebGlShader};
+use web_sys::{console, HtmlElement, WebGlProgram, WebGlRenderingContext, WebGlShader};
+
+#[wasm_bindgen]
+pub fn setup() {
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+
+    let closure = Closure::wrap(Box::new(|| {
+        console::log_1(&"clear button clicked".into());
+    }) as Box<FnMut()>);
+
+    document
+        .get_element_by_id("clear")
+        .unwrap()
+        .dyn_ref::<HtmlElement>()
+        .unwrap()
+        .set_onclick(Some(closure.as_ref().unchecked_ref()));
+    closure.forget();
+
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    let canvas: web_sys::HtmlCanvasElement = canvas
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .map_err(|_| ())
+        .unwrap();
+
+    let width = canvas
+        .dyn_ref::<web_sys::HtmlElement>()
+        .unwrap()
+        .offset_width() as u32;
+    let height = canvas
+        .dyn_ref::<web_sys::HtmlElement>()
+        .unwrap()
+        .offset_height() as u32;
+
+    canvas.set_width(width);
+    canvas.set_height(height);
+
+    let context = canvas
+        .get_context("webgl")
+        .unwrap()
+        .unwrap()
+        .dyn_into::<WebGlRenderingContext>()
+        .unwrap();
+    context.viewport(0, 0, width as i32, height as i32);
+
+    let vert_shader = compile_shader(
+        &context,
+        WebGlRenderingContext::VERTEX_SHADER,
+        r#"
+            attribute vec4 position;
+            void main() {
+                gl_Position = position;
+            }
+        "#,
+    ).unwrap();
+    let frag_shader = compile_shader(
+        &context,
+        WebGlRenderingContext::FRAGMENT_SHADER,
+        r#"
+            void main() {
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
+        "#,
+    ).unwrap();
+    let program = link_program(&context, [vert_shader, frag_shader].iter()).unwrap();
+    context.use_program(Some(&program));
+}
 
 #[wasm_bindgen]
 pub fn draw() {
-    let document = web_sys::window().unwrap().document().unwrap();
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas
         .dyn_into::<web_sys::HtmlCanvasElement>()
@@ -22,27 +91,8 @@ pub fn draw() {
         .dyn_into::<WebGlRenderingContext>()
         .unwrap();
 
-    let vert_shader = compile_shader(
-        &context,
-        WebGlRenderingContext::VERTEX_SHADER,
-        r#"
-        attribute vec4 position;
-        void main() {
-            gl_Position = position;
-        }
-    "#,
-    ).unwrap();
-    let frag_shader = compile_shader(
-        &context,
-        WebGlRenderingContext::FRAGMENT_SHADER,
-        r#"
-        void main() {
-            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-        }
-    "#,
-    ).unwrap();
-    let program = link_program(&context, [vert_shader, frag_shader].iter()).unwrap();
-    context.use_program(Some(&program));
+    context
+        .clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
 
     let vertices = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
     let vert_array = js_sys::Float32Array::new(&wasm_bindgen::JsValue::from(vertices.len() as u32));
@@ -68,6 +118,14 @@ pub fn draw() {
         0,
         (vertices.len() / 3) as i32,
     );
+
+    let closure = Closure::wrap(Box::new(|_time| {
+        draw();
+    }) as Box<FnMut(f64)>);
+    window
+        .request_animation_frame(closure.as_ref().unchecked_ref())
+        .unwrap();
+    closure.forget();
 }
 
 pub fn compile_shader(

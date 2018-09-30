@@ -48,10 +48,10 @@ let
   };
 
   buildRustPackage = callPackage (import <nixpkgs/pkgs/build-support/rust>) {
-		rust = {
+    rust = {
       rustc = rust_channel.rust;
       cargo = rust_channel.cargo;
-		};
+    };
   };
 
   wasm-bindgen-cli = buildRustPackage rec {

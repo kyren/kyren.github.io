@@ -41,6 +41,7 @@ dependencies = [
 name = "block_lighting_demos"
 version = "0.1.0"
 dependencies = [
+ "enclose 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "js-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-bindgen 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "web-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -54,6 +55,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "cfg-if"
 version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "enclose"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -464,6 +470,7 @@ dependencies = [
 "checksum backtrace-sys 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)" = "c66d56ac8dabd07f6aacdaf633f4b8262f5b3601a810a0dcddffd5c22c69daa0"
 "checksum cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)" = "f159dfd43363c4d08055a07703eb7a3406b0dac4d0584d96965a3262db3c9d16"
 "checksum cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c4e7bb64a8ebb0d856483e1e682ea3422f883c5f5615a90d51a2c82fe87fdd3"
+"checksum enclose 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "deea27ea63ea4274209fe4daf407e99c799a27170f795a06ef1b387fa81ac8f6"
 "checksum env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)" = "15b0a4d2e39f8420210be8b27eeda28029729e2fd4291019455016c348240c38"
 "checksum failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7efb22686e4a466b1ec1a15c2898f91fa9cb340452496dca654032de20ff95b9"
 "checksum failure_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "946d0e98a50d9831f5d589038d2ca7f8f455b1c21028c0db0e84116a12696426"

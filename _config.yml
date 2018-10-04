@@ -33,3 +33,5 @@ exclude:
   - Gemfile.lock
   - shell.nix
   - gemset.nix
+  - _source
+  - _scripts

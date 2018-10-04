@@ -9,13 +9,13 @@ let
 in with nixpkgs;
 let
   rust_channel = rustChannelOf {
-    date = "2018-09-24";
+    date = "2018-09-29";
     channel = "nightly";
   };
 
   rust = rust_channel.rust.override {
     targets = [ "wasm32-unknown-unknown" ];
-    extensions = [ "rust-src" ];
+    extensions = [ "rust-src" "rustfmt-preview" "rls-preview" ];
   };
 
   jekyll_env = bundlerEnv rec {

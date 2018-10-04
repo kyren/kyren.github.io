@@ -1,54 +1,164 @@
 extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
+#[macro_use]
+extern crate enclose;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{console, HtmlElement, WebGlProgram, WebGlRenderingContext, WebGlShader, Window};
+use web_sys::{
+    console, HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlProgram,
+    WebGlRenderingContext, WebGlShader, Window,
+};
 
 #[wasm_bindgen]
 pub fn init() {
-    fn draw(window: Window, state: Rc<RefCell<State>>, time: f64) {
-        state.borrow_mut().draw(time);
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+
+    let canvas = document
+        .get_element_by_id("canvas")
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap();
+
+    let state = Rc::new(RefCell::new(State::init(canvas.clone())));
+
+    let mouse_move_callback = Closure::wrap(Box::new(enclose!((state) move |mouse_event| {
+        state.borrow_mut().mouse_move(mouse_event);
+    })) as Box<FnMut(MouseEvent)>);
+    AsRef::<HtmlElement>::as_ref(&canvas)
+        .set_onmousemove(Some(mouse_move_callback.as_ref().unchecked_ref()));
+    mouse_move_callback.forget();
+
+    let solid_block_radio = document
+        .get_element_by_id("solid_block_mode")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    let solid_block_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().set_mode(Mode::SolidBlock);
+    })) as Box<FnMut()>);
+    solid_block_radio.set_onclick(Some(solid_block_callback.as_ref().unchecked_ref()));
+    solid_block_callback.forget();
+
+    let light_block_radio = document
+        .get_element_by_id("light_block_mode")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    let light_block_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().set_mode(Mode::LightBlock);
+    })) as Box<FnMut()>);
+    light_block_radio.set_onclick(Some(light_block_callback.as_ref().unchecked_ref()));
+    light_block_callback.forget();
+
+    let point_light_radio = document
+        .get_element_by_id("point_light_mode")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    let point_light_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().set_mode(Mode::PointLight);
+    })) as Box<FnMut()>);
+    point_light_radio.set_onclick(Some(point_light_callback.as_ref().unchecked_ref()));
+    point_light_callback.forget();
+
+    let erase_mode_radio = document
+        .get_element_by_id("erase_mode")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    let erase_mode_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().set_mode(Mode::Erase);
+    })) as Box<FnMut()>);
+    erase_mode_radio.set_onclick(Some(erase_mode_callback.as_ref().unchecked_ref()));
+    erase_mode_callback.forget();
+
+    let angle_input = document
+        .get_element_by_id("angle")
+        .unwrap()
+        .dyn_into::<HtmlInputElement>()
+        .unwrap();
+    let angle_callback = Closure::wrap(Box::new(enclose!((state, angle_input) move || {
+        state.borrow_mut().set_angle(angle_input.value().parse::<f32>().unwrap() / 100.0);
+    })) as Box<FnMut()>);
+    AsRef::<HtmlElement>::as_ref(&angle_input)
+        .set_onchange(Some(angle_callback.as_ref().unchecked_ref()));
+    angle_callback.forget();
+
+    let pointiness_input = document
+        .get_element_by_id("pointiness")
+        .unwrap()
+        .dyn_into::<HtmlInputElement>()
+        .unwrap();
+    let pointiness_callback = Closure::wrap(Box::new(enclose!((state, pointiness_input) move || {
+        state.borrow_mut().set_pointiness(pointiness_input.value().parse::<f32>().unwrap() / 100.0);
+    })) as Box<FnMut()>);
+    AsRef::<HtmlElement>::as_ref(&pointiness_input)
+        .set_onchange(Some(pointiness_callback.as_ref().unchecked_ref()));
+    pointiness_callback.forget();
+
+    let clear_button = document
+        .get_element_by_id("clear")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+
+    let clear_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().clear();
+    })) as Box<FnMut()>);
+    clear_button.set_onclick(Some(clear_callback.as_ref().unchecked_ref()));
+    clear_callback.forget();
+
+    let advance_button = document
+        .get_element_by_id("advance")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+
+    let advance_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().advance();
+    })) as Box<FnMut()>);
+    advance_button.set_onclick(Some(advance_callback.as_ref().unchecked_ref()));
+    advance_callback.forget();
+
+    let reset_button = document
+        .get_element_by_id("reset")
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+
+    let reset_callback = Closure::wrap(Box::new(enclose!((state) move || {
+        state.borrow_mut().reset();
+    })) as Box<FnMut()>);
+    reset_button.set_onclick(Some(reset_callback.as_ref().unchecked_ref()));
+    reset_callback.forget();
+
+    fn draw(window: Window, state: Rc<RefCell<State>>) {
+        state.borrow_mut().draw();
 
         let callback_window = window.clone();
-        let callback = Closure::wrap(Box::new(move |time| {
-            draw(callback_window.clone(), state.clone(), time);
+        let callback = Closure::wrap(Box::new(move |_time| {
+            draw(callback_window.clone(), state.clone());
         }) as Box<FnMut(f64)>);
         window
             .request_animation_frame(callback.as_ref().unchecked_ref())
             .unwrap();
         callback.forget();
     }
+    draw(window, state);
+}
 
-    let window = web_sys::window().unwrap();
-    let document = window.document().unwrap();
-
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    let canvas: web_sys::HtmlCanvasElement = canvas
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .map_err(|_| ())
-        .unwrap();
-
-    let state = Rc::new(RefCell::new(State::init(canvas)));
-
-    let clear_state = state.clone();
-    let clear_callback = Closure::wrap(Box::new(move || {
-        clear_state.borrow_mut().clear();
-    }) as Box<FnMut()>);
-
-    document
-        .get_element_by_id("clear")
-        .unwrap()
-        .dyn_ref::<HtmlElement>()
-        .unwrap()
-        .set_onclick(Some(clear_callback.as_ref().unchecked_ref()));
-    clear_callback.forget();
-
-    draw(window, state, 0.0);
+#[derive(Debug)]
+enum Mode {
+    SolidBlock,
+    LightBlock,
+    PointLight,
+    Erase,
 }
 
 struct State {
@@ -93,7 +203,8 @@ impl State {
                     gl_Position = vec4(a_position, 0.0, 1.0);
                 }
             "#,
-        ).unwrap();
+        )
+        .unwrap();
         let frag_shader = compile_shader(
             &context,
             WebGlRenderingContext::FRAGMENT_SHADER,
@@ -106,14 +217,15 @@ impl State {
                     gl_FragColor = vec4(v_color, 1.0);
                 }
             "#,
-        ).unwrap();
+        )
+        .unwrap();
         let program = link_program(&context, [vert_shader, frag_shader].iter()).unwrap();
         context.use_program(Some(&program));
 
         State { context }
     }
 
-    fn draw(&mut self, _time: f64) {
+    fn draw(&mut self) {
         self.context.clear(
             WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
         );
@@ -165,8 +277,32 @@ impl State {
         );
     }
 
+    fn mouse_move(&mut self, _mouse_event: MouseEvent) {
+        console::log_1(&"mouse move event".into());
+    }
+
+    fn set_mode(&mut self, mode: Mode) {
+        console::log_1(&format!("mode change {:?}", mode).into());
+    }
+
+    fn set_angle(&mut self, amt: f32) {
+        console::log_1(&format!("set angle {}", amt).into());
+    }
+
+    fn set_pointiness(&mut self, amt: f32) {
+        console::log_1(&format!("set pointiness {}", amt).into());
+    }
+
     fn clear(&mut self) {
         console::log_1(&"clear button clicked".into());
+    }
+
+    fn advance(&mut self) {
+        console::log_1(&"advance button clicked".into());
+    }
+
+    fn reset(&mut self) {
+        console::log_1(&"reset button clicked".into());
     }
 }
 

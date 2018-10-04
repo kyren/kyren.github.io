@@ -4,4 +4,4 @@
 set -e
 cd "`dirname \"$0\"`/.."
 
-exec jekyll serve --watch
+exec jekyll serve --force-polling

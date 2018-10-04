@@ -17,11 +17,26 @@
                 height: 100%;
             }
 
-            label {
+            .button {
                 display: inline-block;
                 background-color: #ddd;
-                padding: 4px 11px;
+                padding: 3px 10px;
                 cursor: pointer;
+            }
+
+            label {
+                display: inline-block;
+                padding: 3px 10px
+            }
+
+            .control-container {
+                background-color: #ddd;
+            }
+
+            input[type="range"] {
+                -webkit-appearance: none !important;
+                background-color: #aaa;
+                height: 10px;
             }
 
             input[type="radio"] {
@@ -41,7 +56,7 @@
             }
 
             button {
-                font-size: 12px;
+                font-size: 11px;
                 font-family: Arial;
                 text-transform: uppercase;
 
@@ -49,8 +64,7 @@
                 border: none;
                 display: inline-block;
                 cursor: pointer;
-                padding: 4px 11px;
-                cursor: button;
+                padding: 3px 10px;
             }
 
             button:hover {
@@ -61,7 +75,7 @@
                 position: absolute;
                 right: 0%;
                 top: 0%;
-                font-size: 12px;
+                font-size: 11px;
                 font-family: Arial;
                 text-transform: uppercase;
             }
@@ -70,7 +84,7 @@
                 position: absolute;
                 right: 0%;
                 bottom: 0%;
-                font-size: 12px;
+                font-size: 11px;
                 font-family: Arial;
                 text-transform: uppercase;
             }
@@ -78,7 +92,7 @@
             .control {
                 float: right;
                 clear: right;
-                margin: 5px;
+                margin: 4px;
             }
         </style>
     </head>
@@ -87,29 +101,36 @@
 
         <div class="upper_control_panel">
             <div class="control">
-                <input id="solid_block_mode" type="radio" value="solid_block" name="mode">
-                <label for="solid_block_mode">occluding blocks</label>
+                <input id="solid_block_mode" type="radio" value="solid_block" name="mode" checked>
+                <label for="solid_block_mode" class="button">occluding blocks</label>
 
                 <input id="light_block_mode" type="radio" value="light_block" name="mode">
-                <label for="light_block_mode">light emitting blocks</label>
+                <label for="light_block_mode" class="button">light emitting blocks</label>
 
-                <input id="point_light_mode" type="radio" value="point_light" name="mode" checked>
-                <label for="point_light_mode">point lights</label>
+                <input id="point_light_mode" type="radio" value="point_light" name="mode">
+                <label for="point_light_mode" class="button">point lights</label>
 
                 <input id="erase_mode" type="radio" value="erase" name="mode">
-                <label for="erase_mode">eraser</label>
+                <label for="erase_mode" class="button">eraser</label>
             </div>
 
-            <div class="control">
-                <input id="mouse_light" type="checkbox">
-                <label for="mouse_light">light follows mouse cursor</label>
+            <div class="control control-container">
+                <label for="ange">point light angle</label>
+                <input id="angle" class="control" type="range" min="0" max="100" value="0"></input>
             </div>
 
-            <button id="clear" class="control">erase all</button>
+            <div class="control control-container">
+                <label for="pointiness">point light pointiness</label>
+                <input id="pointiness" class="control" type="range" min="0" max="100" value="0"></input>
+            </div>
         </div>
 
         <div class="lower_control_panel">
-            <button id="advance" class="control">advance algorithm</button>
+            <button id="clear" class="control">erase all</button>
+            <div class="control">
+                <button id="advance">advance algorithm</button>
+                <button id="reset">reset algorithm</button>
+            </div>
         </div>
     <script type="text/javascript" src="index.js"></script></body>
 </html>

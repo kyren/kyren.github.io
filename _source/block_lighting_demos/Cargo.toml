@@ -11,18 +11,21 @@ lto = true
 [dependencies]
 js-sys = "*"
 wasm-bindgen = "*"
+enclose = "*"
 
 [dependencies.web-sys]
 version = "*"
 features = [
-  'console',
   'Document',
   'Element',
-  'HtmlElement',
   'HtmlCanvasElement',
+  'HtmlElement',
+  'HtmlInputElement',
+  'MouseEvent',
   'WebGlBuffer',
-  'WebGlRenderingContext',
   'WebGlProgram',
+  'WebGlRenderingContext',
   'WebGlShader',
   'Window',
+  'console',
 ]

@@ -5,12 +5,13 @@ use failure::{err_msg, Error};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{
-    console, HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlProgram,
-    WebGlRenderingContext, WebGlShader,
+    HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlRenderingContext,
 };
 
-use util::{handle_error, js_err, show_element};
+use glutil::{compile_shader, link_program};
+use util::{handle_error, js_err};
 
+#[derive(Clone)]
 pub struct DemoElements {
     pub canvas: HtmlCanvasElement,
 
@@ -70,65 +71,25 @@ impl Demo {
         let vert_shader = compile_shader(
             &context,
             WebGlRenderingContext::VERTEX_SHADER,
-            r#"
-                precision mediump float;
-
-                attribute vec2 a_position;
-                attribute vec3 a_color;
-
-                varying vec3 v_color;
-
-                void main() {
-                    v_color = a_color;
-                    gl_Position = vec4(a_position, 0.0, 1.0);
-                }
-            "#,
+            VERTEX_SHADER,
         )?;
         let frag_shader = compile_shader(
             &context,
             WebGlRenderingContext::FRAGMENT_SHADER,
-            r#"
-                precision mediump float;
-
-                varying vec3 v_color;
-
-                void main() {
-                    gl_FragColor = vec4(v_color, 1.0);
-                }
-            "#,
+            FRAGMENT_SHADER,
         )?;
         let program = link_program(&context, [vert_shader, frag_shader].iter())?;
         context.use_program(Some(&program));
 
-        show_element(&elements.mode_section)?;
-
         let demo = Rc::new(RefCell::new(Demo { elements, context }));
 
-        Demo::attach_callbacks(demo.clone())?;
-
-        fn draw(demo: Rc<RefCell<Demo>>) {
-            handle_error("drawing frame", || demo.borrow_mut().draw());
-
-            let callback = Closure::wrap(Box::new(move |_time| {
-                draw(demo.clone());
-            }) as Box<FnMut(f64)>);
-            handle_error("requesting next frame", || {
-                web_sys::window()
-                    .ok_or_else(|| err_msg("no window"))?
-                    .request_animation_frame(callback.as_ref().unchecked_ref())
-                    .map_err(js_err)?;
-                Ok(())
-            });
-            callback.forget();
-        }
-        draw(demo);
+        Demo::attach_callbacks(demo)?;
 
         Ok(())
     }
 
     fn attach_callbacks(demo: Rc<RefCell<Demo>>) -> Result<(), Error> {
-        let demo_borrow = demo.borrow();
-        let elements = &demo_borrow.elements;
+        let elements = demo.borrow().elements.clone();
 
         let callback_demo = demo.clone();
         let mouse_move_callback = Closure::wrap(Box::new(move |mouse_event| {
@@ -250,6 +211,23 @@ impl Demo {
             .set_onclick(Some(reset_callback.as_ref().unchecked_ref()));
         reset_callback.forget();
 
+        fn draw(demo: Rc<RefCell<Demo>>) {
+            handle_error("drawing frame", || demo.borrow_mut().draw());
+
+            let callback = Closure::wrap(Box::new(move |_time| {
+                draw(demo.clone());
+            }) as Box<FnMut(f64)>);
+            handle_error("requesting next frame", || {
+                web_sys::window()
+                    .ok_or_else(|| err_msg("no window"))?
+                    .request_animation_frame(callback.as_ref().unchecked_ref())
+                    .map_err(js_err)?;
+                Ok(())
+            });
+            callback.forget();
+        }
+        draw(demo);
+
         Ok(())
     }
 
@@ -311,95 +289,58 @@ impl Demo {
     }
 
     fn mouse_move(&mut self, _mouse_event: MouseEvent) -> Result<(), Error> {
-        console::log_1(&"mouse move event".into());
         Ok(())
     }
 
-    fn set_mode(&mut self, mode: Mode) -> Result<(), Error> {
-        console::log_1(&format!("mode change {:?}", mode).into());
+    fn set_mode(&mut self, _mode: Mode) -> Result<(), Error> {
         Ok(())
     }
 
-    fn set_angle(&mut self, amt: i32) -> Result<(), Error> {
-        console::log_1(&format!("set angle {}", amt).into());
+    fn set_angle(&mut self, _amt: i32) -> Result<(), Error> {
         Ok(())
     }
 
-    fn set_pointiness(&mut self, amt: i32) -> Result<(), Error> {
-        console::log_1(&format!("set pointiness {}", amt).into());
+    fn set_pointiness(&mut self, _amt: i32) -> Result<(), Error> {
         Ok(())
     }
 
-    fn set_spread_steps(&mut self, amt: i32) -> Result<(), Error> {
-        console::log_1(&format!("set spread steps {}", amt).into());
+    fn set_spread_steps(&mut self, _amt: i32) -> Result<(), Error> {
         Ok(())
     }
 
     fn clear(&mut self) -> Result<(), Error> {
-        console::log_1(&"clear button clicked".into());
         Ok(())
     }
 
     fn advance(&mut self) -> Result<(), Error> {
-        console::log_1(&"advance button clicked".into());
         Ok(())
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        console::log_1(&"reset button clicked".into());
         Ok(())
     }
 }
 
-fn compile_shader(
-    context: &WebGlRenderingContext,
-    shader_type: u32,
-    source: &str,
-) -> Result<WebGlShader, Error> {
-    let shader = context
-        .create_shader(shader_type)
-        .ok_or_else(|| err_msg("Unable to create shader object"))?;
-    context.shader_source(&shader, source);
-    context.compile_shader(&shader);
+const VERTEX_SHADER: &str = r#"
+    precision mediump float;
 
-    if context
-        .get_shader_parameter(&shader, WebGlRenderingContext::COMPILE_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        Ok(shader)
-    } else {
-        Err(context
-            .get_shader_info_log(&shader)
-            .map(err_msg)
-            .unwrap_or_else(|| err_msg("Unknown error creating shader"))
-            .into())
-    }
-}
+    attribute vec2 a_position;
+    attribute vec3 a_color;
 
-fn link_program<'a, T: IntoIterator<Item = &'a WebGlShader>>(
-    context: &WebGlRenderingContext,
-    shaders: T,
-) -> Result<WebGlProgram, Error> {
-    let program = context
-        .create_program()
-        .ok_or_else(|| err_msg("Unable to create shader object"))?;
-    for shader in shaders {
-        context.attach_shader(&program, shader)
-    }
-    context.link_program(&program);
+    varying vec3 v_color;
 
-    if context
-        .get_program_parameter(&program, WebGlRenderingContext::LINK_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        Ok(program)
-    } else {
-        Err(context
-            .get_program_info_log(&program)
-            .map(err_msg)
-            .unwrap_or_else(|| err_msg("Unknown error creating program object"))
-            .into())
+    void main() {
+        v_color = a_color;
+        gl_Position = vec4(a_position, 0.0, 1.0);
     }
-}
+"#;
+
+const FRAGMENT_SHADER: &str = r#"
+    precision mediump float;
+
+    varying vec3 v_color;
+
+    void main() {
+        gl_FragColor = vec4(v_color, 1.0);
+    }
+"#;

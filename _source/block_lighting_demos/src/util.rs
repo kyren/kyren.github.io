@@ -2,6 +2,10 @@ use failure::{err_msg, Error};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{console, HtmlElement};
 
+pub fn console_log<S: Into<JsValue>>(s: S) {
+    console::log_1(&s.into())
+}
+
 pub fn get_element<T: JsCast>(id: &str) -> Result<T, Error> {
     web_sys::window()
         .ok_or_else(|| err_msg("no window"))?
@@ -15,7 +19,7 @@ pub fn get_element<T: JsCast>(id: &str) -> Result<T, Error> {
 
 pub fn handle_error<F: FnOnce() -> Result<(), Error>>(context: &str, f: F) {
     if let Err(err) = f() {
-        console::log_1(&format!("{} errored with: {:?}", context, err).into());
+        console_log(format!("{} errored with: {:?}", context, err));
         panic!();
     }
 }

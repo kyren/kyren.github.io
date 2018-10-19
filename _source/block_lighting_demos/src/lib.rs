@@ -1,12 +1,15 @@
+#![allow(dead_code)]
+
 extern crate failure;
 extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
-use wasm_bindgen::prelude::*;
-
 mod demo;
+mod glutil;
 mod util;
+
+use wasm_bindgen::prelude::*;
 
 use self::util::{get_element, handle_error};
 

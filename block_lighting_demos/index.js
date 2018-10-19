@@ -55,17 +55,11 @@
 /******/ 		"./block_lighting_demos_bg.wasm": function() {
 /******/ 			return {
 /******/ 				"./block_lighting_demos": {
-/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
-/******/ 					},
-/******/ 					"__wbindgen_closure_wrapper451": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper451"](p0i32,p1i32,p2i32);
-/******/ 					},
 /******/ 					"__wbindgen_object_drop_ref": function(p0i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_object_drop_ref"](p0i32);
 /******/ 					},
-/******/ 					"__widl_f_clear_WebGLRenderingContext": function(p0i32,p1i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_clear_WebGLRenderingContext"](p0i32,p1i32);
+/******/ 					"__wbindgen_closure_wrapper431": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper431"](p0i32,p1i32,p2i32);
 /******/ 					},
 /******/ 					"__wbindgen_number_new": function(p0f64) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_number_new"](p0f64);
@@ -109,6 +103,21 @@
 /******/ 					"__wbindgen_string_get": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_string_get"](p0i32,p1i32);
 /******/ 					},
+/******/ 					"__wbindgen_object_clone_ref": function(p0i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_object_clone_ref"](p0i32);
+/******/ 					},
+/******/ 					"__wbg_newnoargs_b1f726fad978f5a3": function(p0i32,p1i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbg_newnoargs_b1f726fad978f5a3"](p0i32,p1i32);
+/******/ 					},
+/******/ 					"__wbg_call_fa7f0da29d7b9250": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbg_call_fa7f0da29d7b9250"](p0i32,p1i32,p2i32);
+/******/ 					},
+/******/ 					"__widl_instanceof_Window": function(p0i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_instanceof_Window"](p0i32);
+/******/ 					},
+/******/ 					"__wbindgen_throw": function(p0i32,p1i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_throw"](p0i32,p1i32);
+/******/ 					},
 /******/ 					"__widl_f_create_shader_WebGLRenderingContext": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_create_shader_WebGLRenderingContext"](p0i32,p1i32);
 /******/ 					},
@@ -127,23 +136,8 @@
 /******/ 					"__widl_f_get_shader_info_log_WebGLRenderingContext": function(p0i32,p1i32,p2i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_get_shader_info_log_WebGLRenderingContext"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_object_clone_ref": function(p0i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_object_clone_ref"](p0i32);
-/******/ 					},
-/******/ 					"__wbg_newnoargs_b1f726fad978f5a3": function(p0i32,p1i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbg_newnoargs_b1f726fad978f5a3"](p0i32,p1i32);
-/******/ 					},
-/******/ 					"__wbg_call_fa7f0da29d7b9250": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbg_call_fa7f0da29d7b9250"](p0i32,p1i32,p2i32);
-/******/ 					},
-/******/ 					"__widl_instanceof_Window": function(p0i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_instanceof_Window"](p0i32);
-/******/ 					},
-/******/ 					"__widl_f_log_1_": function(p0i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_log_1_"](p0i32);
-/******/ 					},
-/******/ 					"__widl_f_document_Window": function(p0i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_document_Window"](p0i32);
+/******/ 					"__widl_f_clear_WebGLRenderingContext": function(p0i32,p1i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_clear_WebGLRenderingContext"](p0i32,p1i32);
 /******/ 					},
 /******/ 					"__widl_f_get_element_by_id_Document": function(p0i32,p1i32,p2i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_get_element_by_id_Document"](p0i32,p1i32,p2i32);
@@ -187,15 +181,6 @@
 /******/ 					"__widl_f_use_program_WebGLRenderingContext": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_use_program_WebGLRenderingContext"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__widl_f_style_HTMLElement": function(p0i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_style_HTMLElement"](p0i32);
-/******/ 					},
-/******/ 					"__widl_f_set_property_CSSStyleDeclaration": function(p0i32,p1i32,p2i32,p3i32,p4i32,p5i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_set_property_CSSStyleDeclaration"](p0i32,p1i32,p2i32,p3i32,p4i32,p5i32);
-/******/ 					},
-/******/ 					"__widl_f_get_program_info_log_WebGLRenderingContext": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_get_program_info_log_WebGLRenderingContext"](p0i32,p1i32,p2i32);
-/******/ 					},
 /******/ 					"__widl_f_set_onmousemove_HTMLElement": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_set_onmousemove_HTMLElement"](p0i32,p1i32);
 /******/ 					},
@@ -205,23 +190,32 @@
 /******/ 					"__widl_f_set_onclick_HTMLElement": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_set_onclick_HTMLElement"](p0i32,p1i32);
 /******/ 					},
+/******/ 					"__widl_f_get_program_info_log_WebGLRenderingContext": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_get_program_info_log_WebGLRenderingContext"](p0i32,p1i32,p2i32);
+/******/ 					},
 /******/ 					"__widl_instanceof_HTMLElement": function(p0i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_instanceof_HTMLElement"](p0i32);
 /******/ 					},
 /******/ 					"__widl_instanceof_HTMLInputElement": function(p0i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_instanceof_HTMLInputElement"](p0i32);
 /******/ 					},
+/******/ 					"__wbindgen_string_new": function(p0i32,p1i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_string_new"](p0i32,p1i32);
+/******/ 					},
+/******/ 					"__widl_f_log_1_": function(p0i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_log_1_"](p0i32);
+/******/ 					},
 /******/ 					"__widl_f_value_HTMLInputElement": function(p0i32,p1i32) {
 /******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_value_HTMLInputElement"](p0i32,p1i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper24": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper24"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper21": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper21"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_closure_wrapper448": function(p0i32,p1i32,p2i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper448"](p0i32,p1i32,p2i32);
+/******/ 					"__wbindgen_closure_wrapper428": function(p0i32,p1i32,p2i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_closure_wrapper428"](p0i32,p1i32,p2i32);
 /******/ 					},
-/******/ 					"__wbindgen_throw": function(p0i32,p1i32) {
-/******/ 						return installedModules["./block_lighting_demos.js"].exports["__wbindgen_throw"](p0i32,p1i32);
+/******/ 					"__widl_f_document_Window": function(p0i32) {
+/******/ 						return installedModules["./block_lighting_demos.js"].exports["__widl_f_document_Window"](p0i32);
 /******/ 					}
 /******/ 				}
 /******/ 			};
@@ -322,7 +316,7 @@
 /******/ 				promises.push(installedWasmModuleData);
 /******/ 			else {
 /******/ 				var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 				var req = fetch(__webpack_require__.p + "" + {"./block_lighting_demos_bg.wasm":"306d3111307604d726ff"}[wasmModuleId] + ".module.wasm");
+/******/ 				var req = fetch(__webpack_require__.p + "" + {"./block_lighting_demos_bg.wasm":"5aadf146fa76c63a97b7"}[wasmModuleId] + ".module.wasm");
 /******/ 				var promise;
 /******/ 				if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 					promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {

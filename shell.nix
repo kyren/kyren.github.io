@@ -9,7 +9,7 @@ let
 in with nixpkgs;
 let
   rust_channel = rustChannelOf {
-    date = "2018-09-29";
+    date = "2018-10-05";
     channel = "nightly";
   };
 

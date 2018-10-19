@@ -29,14 +29,11 @@
                 padding: 3px 10px
             }
 
-            .control-container {
-                background-color: #ddd;
-            }
-
             input[type="range"] {
                 -webkit-appearance: none !important;
                 background-color: #aaa;
                 height: 10px;
+                margin: 4px;
             }
 
             input[type="radio"] {
@@ -93,6 +90,11 @@
                 float: right;
                 clear: right;
                 margin: 4px;
+                display: none;
+            }
+
+            .control-background {
+                background-color: #ddd;
             }
         </style>
     </head>
@@ -100,7 +102,7 @@
         <canvas id="canvas"></canvas>
 
         <div class="upper_control_panel">
-            <div class="control">
+            <div id="mode_controls" class="control">
                 <input id="solid_block_mode" type="radio" value="solid_block" name="mode" checked>
                 <label for="solid_block_mode" class="button">occluding blocks</label>
 
@@ -114,20 +116,27 @@
                 <label for="erase_mode" class="button">eraser</label>
             </div>
 
-            <div class="control control-container">
-                <label for="ange">point light angle</label>
-                <input id="angle" class="control" type="range" min="0" max="100" value="0"></input>
+            <div id="angle_controls" class="control control-background">
+                <label for="angle">point light angle</label>
+                <input id="angle" type="range" min="0" max="100" value="0"></input>
             </div>
 
-            <div class="control control-container">
+            <div id="pointiness_controls" class="control control-background">
                 <label for="pointiness">point light pointiness</label>
-                <input id="pointiness" class="control" type="range" min="0" max="100" value="0"></input>
+                <input id="pointiness" type="range" min="0" max="100" value="50"></input>
+            </div>
+
+            <div id="spread_controls" class="control control-background">
+                <label for="spread_steps">spread steps (1 - 4)</label>
+                <input id="spread_steps" type="range" min="1" max="4" value="2"></input>
             </div>
         </div>
 
         <div class="lower_control_panel">
-            <button id="clear" class="control">erase all</button>
-            <div class="control">
+            <div id="clear_controls" class="control">
+                <button id="clear">erase all</button>
+            </div>
+            <div id="algorithm_controls" class="control">
                 <button id="advance">advance algorithm</button>
                 <button id="reset">reset algorithm</button>
             </div>

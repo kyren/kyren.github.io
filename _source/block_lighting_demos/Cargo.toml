@@ -11,11 +11,11 @@ lto = true
 [dependencies]
 js-sys = "*"
 wasm-bindgen = "*"
-enclose = "*"
 
 [dependencies.web-sys]
 version = "*"
 features = [
+  'CssStyleDeclaration',
   'Document',
   'Element',
   'HtmlCanvasElement',

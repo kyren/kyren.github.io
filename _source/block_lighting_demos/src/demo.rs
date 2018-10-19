@@ -1,12 +1,15 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use failure::{err_msg, Error};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{
     console, HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlProgram,
     WebGlRenderingContext, WebGlShader,
 };
+
+use util::{handle_error, js_err, show_element};
 
 pub struct DemoElements {
     pub canvas: HtmlCanvasElement,
@@ -48,17 +51,9 @@ enum Mode {
 }
 
 impl Demo {
-    pub fn init(elements: DemoElements) {
-        let width = elements
-            .canvas
-            .dyn_ref::<web_sys::HtmlElement>()
-            .unwrap()
-            .offset_width() as u32;
-        let height = elements
-            .canvas
-            .dyn_ref::<web_sys::HtmlElement>()
-            .unwrap()
-            .offset_height() as u32;
+    pub fn init(elements: DemoElements) -> Result<(), Error> {
+        let width = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_width() as u32;
+        let height = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_height() as u32;
 
         elements.canvas.set_width(width);
         elements.canvas.set_height(height);
@@ -66,10 +61,10 @@ impl Demo {
         let context = elements
             .canvas
             .get_context("webgl")
-            .unwrap()
-            .unwrap()
+            .map_err(js_err)?
+            .ok_or_else(|| err_msg("no webgl context available"))?
             .dyn_into::<WebGlRenderingContext>()
-            .unwrap();
+            .map_err(|_| err_msg("webgl context is incorrect type"))?;
         context.viewport(0, 0, width as i32, height as i32);
 
         let vert_shader = compile_shader(
@@ -88,8 +83,7 @@ impl Demo {
                     gl_Position = vec4(a_position, 0.0, 1.0);
                 }
             "#,
-        )
-        .unwrap();
+        )?;
         let frag_shader = compile_shader(
             &context,
             WebGlRenderingContext::FRAGMENT_SHADER,
@@ -102,43 +96,45 @@ impl Demo {
                     gl_FragColor = vec4(v_color, 1.0);
                 }
             "#,
-        )
-        .unwrap();
-        let program = link_program(&context, [vert_shader, frag_shader].iter()).unwrap();
+        )?;
+        let program = link_program(&context, [vert_shader, frag_shader].iter())?;
         context.use_program(Some(&program));
 
-        elements
-            .mode_section
-            .style()
-            .set_property("display", "block")
-            .unwrap();
+        show_element(&elements.mode_section)?;
 
         let demo = Rc::new(RefCell::new(Demo { elements, context }));
 
-        Demo::attach_callbacks(demo.clone());
+        Demo::attach_callbacks(demo.clone())?;
 
         fn draw(demo: Rc<RefCell<Demo>>) {
-            demo.borrow_mut().draw();
+            handle_error("drawing frame", || demo.borrow_mut().draw());
 
             let callback = Closure::wrap(Box::new(move |_time| {
                 draw(demo.clone());
             }) as Box<FnMut(f64)>);
-            web_sys::window()
-                .unwrap()
-                .request_animation_frame(callback.as_ref().unchecked_ref())
-                .unwrap();
+            handle_error("requesting next frame", || {
+                web_sys::window()
+                    .ok_or_else(|| err_msg("no window"))?
+                    .request_animation_frame(callback.as_ref().unchecked_ref())
+                    .map_err(js_err)?;
+                Ok(())
+            });
             callback.forget();
         }
         draw(demo);
+
+        Ok(())
     }
 
-    fn attach_callbacks(demo: Rc<RefCell<Demo>>) {
+    fn attach_callbacks(demo: Rc<RefCell<Demo>>) -> Result<(), Error> {
         let demo_borrow = demo.borrow();
         let elements = &demo_borrow.elements;
 
         let callback_demo = demo.clone();
         let mouse_move_callback = Closure::wrap(Box::new(move |mouse_event| {
-            callback_demo.borrow_mut().mouse_move(mouse_event);
+            handle_error("mouse move callback", || {
+                callback_demo.borrow_mut().mouse_move(mouse_event)
+            });
         }) as Box<FnMut(MouseEvent)>);
         AsRef::<HtmlElement>::as_ref(&elements.canvas)
             .set_onmousemove(Some(mouse_move_callback.as_ref().unchecked_ref()));
@@ -146,7 +142,9 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let solid_block_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().set_mode(Mode::SolidBlock);
+            handle_error("mode change callback", || {
+                callback_demo.borrow_mut().set_mode(Mode::SolidBlock)
+            });
         }) as Box<FnMut()>);
         elements
             .solid_block_mode_radio
@@ -155,7 +153,9 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let light_block_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().set_mode(Mode::LightBlock);
+            handle_error("mode change callback", || {
+                callback_demo.borrow_mut().set_mode(Mode::LightBlock)
+            });
         }) as Box<FnMut()>);
         elements
             .light_block_mode_radio
@@ -164,7 +164,9 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let point_light_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().set_mode(Mode::PointLight);
+            handle_error("mode change callback", || {
+                callback_demo.borrow_mut().set_mode(Mode::PointLight)
+            });
         }) as Box<FnMut()>);
         elements
             .point_light_mode_radio
@@ -173,7 +175,9 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let erase_mode_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().set_mode(Mode::Erase);
+            handle_error("mode change callback", || {
+                callback_demo.borrow_mut().set_mode(Mode::Erase)
+            });
         }) as Box<FnMut()>);
         elements
             .erase_mode_radio
@@ -182,9 +186,12 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let angle_callback = Closure::wrap(Box::new(move || {
-            let mut callback_demo = callback_demo.borrow_mut();
-            let angle = callback_demo.elements.angle_slider.value().parse().unwrap();
-            callback_demo.set_angle(angle);
+            handle_error("set angle callback", || {
+                let mut callback_demo = callback_demo.borrow_mut();
+                let angle = callback_demo.elements.angle_slider.value().parse()?;
+                callback_demo.set_angle(angle)?;
+                Ok(())
+            });
         }) as Box<FnMut()>);
         AsRef::<HtmlElement>::as_ref(&elements.angle_slider)
             .set_onchange(Some(angle_callback.as_ref().unchecked_ref()));
@@ -192,14 +199,12 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let pointiness_callback = Closure::wrap(Box::new(move || {
-            let mut callback_demo = callback_demo.borrow_mut();
-            let pointiness = callback_demo
-                .elements
-                .pointiness_slider
-                .value()
-                .parse()
-                .unwrap();
-            callback_demo.set_pointiness(pointiness);
+            handle_error("set pointiness callback", || {
+                let mut callback_demo = callback_demo.borrow_mut();
+                let pointiness = callback_demo.elements.pointiness_slider.value().parse()?;
+                callback_demo.set_pointiness(pointiness)?;
+                Ok(())
+            });
         }) as Box<FnMut()>);
         AsRef::<HtmlElement>::as_ref(&elements.pointiness_slider)
             .set_onchange(Some(pointiness_callback.as_ref().unchecked_ref()));
@@ -207,14 +212,12 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let spread_steps_callback = Closure::wrap(Box::new(move || {
-            let mut callback_demo = callback_demo.borrow_mut();
-            let spread_steps = callback_demo
-                .elements
-                .spread_steps_slider
-                .value()
-                .parse()
-                .unwrap();
-            callback_demo.set_spread_steps(spread_steps);
+            handle_error("set spread steps callback", || {
+                let mut callback_demo = callback_demo.borrow_mut();
+                let spread_steps = callback_demo.elements.spread_steps_slider.value().parse()?;
+                callback_demo.set_spread_steps(spread_steps)?;
+                Ok(())
+            });
         }) as Box<FnMut()>);
         AsRef::<HtmlElement>::as_ref(&elements.spread_steps_slider)
             .set_onchange(Some(spread_steps_callback.as_ref().unchecked_ref()));
@@ -222,7 +225,7 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let clear_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().clear();
+            handle_error("clear callback", || callback_demo.borrow_mut().clear());
         }) as Box<FnMut()>);
         elements
             .clear_button
@@ -231,7 +234,7 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let advance_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().advance();
+            handle_error("advance callback", || callback_demo.borrow_mut().advance());
         }) as Box<FnMut()>);
         elements
             .advance_button
@@ -240,15 +243,17 @@ impl Demo {
 
         let callback_demo = demo.clone();
         let reset_callback = Closure::wrap(Box::new(move || {
-            callback_demo.borrow_mut().reset();
+            handle_error("reset callback", || callback_demo.borrow_mut().reset());
         }) as Box<FnMut()>);
         elements
             .reset_button
             .set_onclick(Some(reset_callback.as_ref().unchecked_ref()));
         reset_callback.forget();
+
+        Ok(())
     }
 
-    fn draw(&mut self) {
+    fn draw(&mut self) -> Result<(), Error> {
         self.context.clear(
             WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
         );
@@ -262,7 +267,10 @@ impl Demo {
             vert_array.fill(*f, i as u32, (i + 1) as u32);
         }
 
-        let buffer = self.context.create_buffer().unwrap();
+        let buffer = self
+            .context
+            .create_buffer()
+            .ok_or_else(|| err_msg("could not create buffer"))?;
         self.context
             .bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
         self.context.buffer_data_with_opt_array_buffer(
@@ -298,38 +306,48 @@ impl Demo {
             0,
             (vertices.len() / 5) as i32,
         );
+
+        Ok(())
     }
 
-    fn mouse_move(&mut self, _mouse_event: MouseEvent) {
+    fn mouse_move(&mut self, _mouse_event: MouseEvent) -> Result<(), Error> {
         console::log_1(&"mouse move event".into());
+        Ok(())
     }
 
-    fn set_mode(&mut self, mode: Mode) {
+    fn set_mode(&mut self, mode: Mode) -> Result<(), Error> {
         console::log_1(&format!("mode change {:?}", mode).into());
+        Ok(())
     }
 
-    fn set_angle(&mut self, amt: i32) {
+    fn set_angle(&mut self, amt: i32) -> Result<(), Error> {
         console::log_1(&format!("set angle {}", amt).into());
+        Ok(())
     }
 
-    fn set_pointiness(&mut self, amt: i32) {
+    fn set_pointiness(&mut self, amt: i32) -> Result<(), Error> {
         console::log_1(&format!("set pointiness {}", amt).into());
+        Ok(())
     }
 
-    fn set_spread_steps(&mut self, amt: i32) {
+    fn set_spread_steps(&mut self, amt: i32) -> Result<(), Error> {
         console::log_1(&format!("set spread steps {}", amt).into());
+        Ok(())
     }
 
-    fn clear(&mut self) {
+    fn clear(&mut self) -> Result<(), Error> {
         console::log_1(&"clear button clicked".into());
+        Ok(())
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> Result<(), Error> {
         console::log_1(&"advance button clicked".into());
+        Ok(())
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self) -> Result<(), Error> {
         console::log_1(&"reset button clicked".into());
+        Ok(())
     }
 }
 
@@ -337,10 +355,10 @@ fn compile_shader(
     context: &WebGlRenderingContext,
     shader_type: u32,
     source: &str,
-) -> Result<WebGlShader, String> {
+) -> Result<WebGlShader, Error> {
     let shader = context
         .create_shader(shader_type)
-        .ok_or_else(|| String::from("Unable to create shader object"))?;
+        .ok_or_else(|| err_msg("Unable to create shader object"))?;
     context.shader_source(&shader, source);
     context.compile_shader(&shader);
 
@@ -353,17 +371,19 @@ fn compile_shader(
     } else {
         Err(context
             .get_shader_info_log(&shader)
-            .unwrap_or_else(|| "Unknown error creating shader".into()))
+            .map(err_msg)
+            .unwrap_or_else(|| err_msg("Unknown error creating shader"))
+            .into())
     }
 }
 
 fn link_program<'a, T: IntoIterator<Item = &'a WebGlShader>>(
     context: &WebGlRenderingContext,
     shaders: T,
-) -> Result<WebGlProgram, String> {
+) -> Result<WebGlProgram, Error> {
     let program = context
         .create_program()
-        .ok_or_else(|| String::from("Unable to create shader object"))?;
+        .ok_or_else(|| err_msg("Unable to create shader object"))?;
     for shader in shaders {
         context.attach_shader(&program, shader)
     }
@@ -378,6 +398,8 @@ fn link_program<'a, T: IntoIterator<Item = &'a WebGlShader>>(
     } else {
         Err(context
             .get_program_info_log(&program)
-            .unwrap_or_else(|| "Unknown error creating program object".into()))
+            .map(err_msg)
+            .unwrap_or_else(|| err_msg("Unknown error creating program object"))
+            .into())
     }
 }

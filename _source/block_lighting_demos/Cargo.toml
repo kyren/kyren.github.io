@@ -11,6 +11,7 @@ lto = true
 [dependencies]
 js-sys = "*"
 wasm-bindgen = "*"
+failure = "*"
 
 [dependencies.web-sys]
 version = "*"

@@ -211,23 +211,40 @@ impl Demo {
             .set_onclick(Some(reset_callback.as_ref().unchecked_ref()));
         reset_callback.forget();
 
-        fn draw(demo: Rc<RefCell<Demo>>) {
-            handle_error("drawing frame", || demo.borrow_mut().draw());
+        demo.borrow_mut().draw()?;
 
-            let callback = Closure::wrap(Box::new(move |_time| {
-                draw(demo.clone());
-            }) as Box<FnMut(f64)>);
-            handle_error("requesting next frame", || {
-                web_sys::window()
-                    .ok_or_else(|| err_msg("no window"))?
-                    .request_animation_frame(callback.as_ref().unchecked_ref())
-                    .map_err(js_err)?;
-                Ok(())
-            });
-            callback.forget();
-        }
-        draw(demo);
+        Ok(())
+    }
 
+    fn mouse_move(&mut self, _mouse_event: MouseEvent) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn set_mode(&mut self, _mode: Mode) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn set_angle(&mut self, _amt: i32) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn set_pointiness(&mut self, _amt: i32) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn set_spread_steps(&mut self, _amt: i32) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn clear(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn advance(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn reset(&mut self) -> Result<(), Error> {
         Ok(())
     }
 
@@ -285,38 +302,6 @@ impl Demo {
             (vertices.len() / 5) as i32,
         );
 
-        Ok(())
-    }
-
-    fn mouse_move(&mut self, _mouse_event: MouseEvent) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn set_mode(&mut self, _mode: Mode) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn set_angle(&mut self, _amt: i32) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn set_pointiness(&mut self, _amt: i32) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn set_spread_steps(&mut self, _amt: i32) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn clear(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn advance(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn reset(&mut self) -> Result<(), Error> {
         Ok(())
     }
 }

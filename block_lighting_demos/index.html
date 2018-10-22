@@ -144,5 +144,12 @@
                 <button id="reset">reset algorithm</button>
             </div>
         </div>
-    <script type="text/javascript" src="index.js"></script></body>
+
+        <script src='./block_lighting_demos.js'></script>
+        <script>
+            wasm_bindgen('./block_lighting_demos_bg.wasm')
+                .then(wasm_bindgen.demo_init)
+                .catch(console.error);
+        </script>
+    </body>
 </html>

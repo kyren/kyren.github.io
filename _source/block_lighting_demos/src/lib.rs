@@ -14,7 +14,7 @@ use wasm_bindgen::prelude::*;
 use self::util::{get_element, handle_error};
 
 #[wasm_bindgen]
-pub fn init() {
+pub fn demo_init() {
     handle_error("initialization", || {
         let canvas = get_element("canvas")?;
 

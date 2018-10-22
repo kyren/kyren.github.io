@@ -75,6 +75,5 @@ in
       rust
       rustracer
       wasm-bindgen-cli
-      nodejs
     ];
   }

@@ -9,7 +9,7 @@ let
 in with nixpkgs;
 let
   rust_channel = rustChannelOf {
-    date = "2018-10-05";
+    date = "2018-11-01";
     channel = "nightly";
   };
 
@@ -26,8 +26,10 @@ let
     gemset = ./gemset.nix;
   };
 
-  wasm-bindgen-version = "0.2.23";
+  wasm-bindgen-version = "0.2.27";
+  wasm-bindgen-sha = "0fl2gghqcfry2jkgk82rrkx3cqph9yqnkialpqh1dyhsmpkq365h";
   wasm-bindgen-lockfile = ./_scripts/wasm-bindgen-Cargo.lock;
+  wasm-bindgen-cargo-sha = "09hrsz3ndzn2zbl86s1b8p2br9m1np4i5sdkgqdyfw37170ilf6m";
 
   wasm-bindgen-src = stdenv.mkDerivation rec {
     version = wasm-bindgen-version;
@@ -37,7 +39,7 @@ let
       owner = "rustwasm";
       repo = "wasm-bindgen";
       rev = "${version}";
-      sha256 = "0bf4iya71ikci2asmynmj7yi1y2happqif1aq8y808jmalfk9f37";
+      sha256 = wasm-bindgen-sha;
     };
 
     installPhase = ''
@@ -64,7 +66,7 @@ let
     src = wasm-bindgen-src;
     cargoBuildFlags = [ "-p wasm-bindgen-cli" ];
 
-    cargoSha256 = "16wxnx34svkjiik70hm3gr0z8pvgarrd00hkbh8gs1kpskd87jp4";
+    cargoSha256 = "09hrsz3ndzn2zbl86s1b8p2br9m1np4i5sdkgqdyfw37170ilf6m";
   };
 in
   mkShell rec {
@@ -73,7 +75,6 @@ in
       bundix
       jekyll_env
       rust
-      rustracer
       wasm-bindgen-cli
     ];
   }

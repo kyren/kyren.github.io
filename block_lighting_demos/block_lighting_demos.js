@@ -184,6 +184,14 @@ __exports.__widl_f_set_onclick_HTMLElement = function(arg0, arg1) {
     __widl_f_set_onclick_HTMLElement_target.call(getObject(arg0), getObject(arg1));
 };
 
+const __widl_f_set_onmousedown_HTMLElement_target = GetOwnOrInheritedPropertyDescriptor(typeof HTMLElement === 'undefined' ? null : HTMLElement.prototype, 'onmousedown').set || function() {
+    throw new Error(`wasm-bindgen: HTMLElement.onmousedown does not exist`);
+};
+
+__exports.__widl_f_set_onmousedown_HTMLElement = function(arg0, arg1) {
+    __widl_f_set_onmousedown_HTMLElement_target.call(getObject(arg0), getObject(arg1));
+};
+
 const __widl_f_set_onmousemove_HTMLElement_target = GetOwnOrInheritedPropertyDescriptor(typeof HTMLElement === 'undefined' ? null : HTMLElement.prototype, 'onmousemove').set || function() {
     throw new Error(`wasm-bindgen: HTMLElement.onmousemove does not exist`);
 };
@@ -217,6 +225,30 @@ __exports.__widl_f_value_HTMLInputElement = function(ret, arg0) {
     mem[ret / 4] = retptr;
     mem[ret / 4 + 1] = retlen;
 
+};
+
+const __widl_f_x_MouseEvent_target = GetOwnOrInheritedPropertyDescriptor(typeof MouseEvent === 'undefined' ? null : MouseEvent.prototype, 'x').get || function() {
+    throw new Error(`wasm-bindgen: MouseEvent.x does not exist`);
+};
+
+__exports.__widl_f_x_MouseEvent = function(arg0) {
+    return __widl_f_x_MouseEvent_target.call(getObject(arg0));
+};
+
+const __widl_f_y_MouseEvent_target = GetOwnOrInheritedPropertyDescriptor(typeof MouseEvent === 'undefined' ? null : MouseEvent.prototype, 'y').get || function() {
+    throw new Error(`wasm-bindgen: MouseEvent.y does not exist`);
+};
+
+__exports.__widl_f_y_MouseEvent = function(arg0) {
+    return __widl_f_y_MouseEvent_target.call(getObject(arg0));
+};
+
+const __widl_f_buttons_MouseEvent_target = GetOwnOrInheritedPropertyDescriptor(typeof MouseEvent === 'undefined' ? null : MouseEvent.prototype, 'buttons').get || function() {
+    throw new Error(`wasm-bindgen: MouseEvent.buttons does not exist`);
+};
+
+__exports.__widl_f_buttons_MouseEvent = function(arg0) {
+    return __widl_f_buttons_MouseEvent_target.call(getObject(arg0));
 };
 
 __exports.__widl_instanceof_WebGLRenderingContext = function(idx) {
@@ -418,8 +450,8 @@ __exports.__widl_f_document_Window = function(arg0) {
 
 };
 
-__exports.__wbg_new_4e4293d158f1eda7 = function(arg0) {
-    return addHeapObject(new Float32Array(getObject(arg0)));
+__exports.__wbg_newwithlength_987928aadf394859 = function(arg0) {
+    return addHeapObject(new Float32Array(arg0));
 };
 
 const __wbg_fill_88e5dbd95aaecbfb_target = typeof Float32Array === 'undefined' ? null : Float32Array.prototype.fill || function() {
@@ -436,6 +468,63 @@ const __wbg_buffer_9d7b5894c32615e1_target = GetOwnOrInheritedPropertyDescriptor
 
 __exports.__wbg_buffer_9d7b5894c32615e1 = function(arg0) {
     return addHeapObject(__wbg_buffer_9d7b5894c32615e1_target.call(getObject(arg0)));
+};
+
+const __wbg_subarray_5cec2cd069e3aa89_target = typeof Float32Array === 'undefined' ? null : Float32Array.prototype.subarray || function() {
+    throw new Error(`wasm-bindgen: Float32Array.subarray does not exist`);
+};
+
+__exports.__wbg_subarray_5cec2cd069e3aa89 = function(arg0, arg1, arg2) {
+    return addHeapObject(__wbg_subarray_5cec2cd069e3aa89_target.call(getObject(arg0), arg1, arg2));
+};
+
+const __wbg_forEach_2b89c96ddfdd5b4e_target = typeof Float32Array === 'undefined' ? null : Float32Array.prototype.forEach || function() {
+    throw new Error(`wasm-bindgen: Float32Array.forEach does not exist`);
+};
+
+let cachedGlobalArgumentPtr = null;
+function globalArgumentPtr() {
+    if (cachedGlobalArgumentPtr === null) {
+        cachedGlobalArgumentPtr = wasm.__wbindgen_global_argument_ptr();
+    }
+    return cachedGlobalArgumentPtr;
+}
+
+function getGlobalArgument(arg) {
+    const idx = globalArgumentPtr() / 4 + arg;
+    return getUint32Memory()[idx];
+}
+
+__exports.__wbg_forEach_2b89c96ddfdd5b4e = function(arg0, arg1) {
+    let cbarg1 = function(arg0, arg1, arg2) {
+        let a = this.a;
+        this.a = 0;
+        try {
+            return this.f(a, this.b, arg0, arg1, addHeapObject(arg2));
+
+        } finally {
+            this.a = a;
+
+        }
+
+    };
+    cbarg1.f = wasm.__wbg_function_table.get(arg1);
+    cbarg1.a = getGlobalArgument(0);
+    cbarg1.b = getGlobalArgument(0 + 1);
+    try {
+        __wbg_forEach_2b89c96ddfdd5b4e_target.call(getObject(arg0), cbarg1.bind(cbarg1));
+    } finally {
+        cbarg1.a = cbarg1.b = 0;
+
+    }
+};
+
+const __wbg_length_973f0dbdc2c7e1c3_target = GetOwnOrInheritedPropertyDescriptor(typeof Float32Array === 'undefined' ? null : Float32Array.prototype, 'length').get || function() {
+    throw new Error(`wasm-bindgen: Float32Array.length does not exist`);
+};
+
+__exports.__wbg_length_973f0dbdc2c7e1c3 = function(arg0) {
+    return __wbg_length_973f0dbdc2c7e1c3_target.call(getObject(arg0));
 };
 
 __exports.__wbg_newnoargs_b5dbe629f3c72f37 = function(arg0, arg1) {
@@ -497,10 +586,6 @@ __exports.__wbindgen_string_new = function(p, l) {
     return addHeapObject(getStringFromWasm(p, l));
 };
 
-__exports.__wbindgen_number_new = function(i) {
-    return addHeapObject(i);
-};
-
 __exports.__wbindgen_boolean_get = function(i) {
     let v = getObject(i);
     if (typeof(v) === 'boolean') {
@@ -520,7 +605,7 @@ __exports.__wbindgen_string_get = function(i, len_ptr) {
 
 __exports.__wbindgen_cb_forget = dropRef;
 
-__exports.__wbindgen_closure_wrapper431 = function(a, b, fi, di, _ignored) {
+__exports.__wbindgen_closure_wrapper446 = function(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
     const cb = function() {
@@ -544,7 +629,7 @@ __exports.__wbindgen_closure_wrapper431 = function(a, b, fi, di, _ignored) {
     return addHeapObject(real);
 };
 
-__exports.__wbindgen_closure_wrapper435 = function(a, b, fi, di, _ignored) {
+__exports.__wbindgen_closure_wrapper450 = function(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
     const cb = function(arg0) {

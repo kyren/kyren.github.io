@@ -8,8 +8,8 @@ use web_sys::{
     HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlRenderingContext,
 };
 
-use glutil::{compile_shader, link_program};
-use util::{handle_error, js_err};
+use blocks::BlockLighting;
+use util::{handle_error, js_err, show_element};
 
 #[derive(Clone)]
 pub struct DemoElements {
@@ -41,6 +41,10 @@ pub struct DemoElements {
 pub struct Demo {
     elements: DemoElements,
     context: WebGlRenderingContext,
+    block_lighting: BlockLighting,
+    width: u32,
+    height: u32,
+    mode: Mode,
 }
 
 #[derive(Debug)]
@@ -56,6 +60,8 @@ impl Demo {
         let width = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_width() as u32;
         let height = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_height() as u32;
 
+        show_element(&elements.mode_section)?;
+
         elements.canvas.set_width(width);
         elements.canvas.set_height(height);
 
@@ -68,20 +74,16 @@ impl Demo {
             .map_err(|_| err_msg("webgl context is incorrect type"))?;
         context.viewport(0, 0, width as i32, height as i32);
 
-        let vert_shader = compile_shader(
-            &context,
-            WebGlRenderingContext::VERTEX_SHADER,
-            VERTEX_SHADER,
-        )?;
-        let frag_shader = compile_shader(
-            &context,
-            WebGlRenderingContext::FRAGMENT_SHADER,
-            FRAGMENT_SHADER,
-        )?;
-        let program = link_program(&context, [vert_shader, frag_shader].iter())?;
-        context.use_program(Some(&program));
+        let block_lighting = BlockLighting::new(context.clone(), 24, 18)?;
 
-        let demo = Rc::new(RefCell::new(Demo { elements, context }));
+        let demo = Rc::new(RefCell::new(Demo {
+            elements,
+            context,
+            block_lighting,
+            width,
+            height,
+            mode: Mode::SolidBlock,
+        }));
 
         Demo::attach_callbacks(demo)?;
 
@@ -90,6 +92,16 @@ impl Demo {
 
     fn attach_callbacks(demo: Rc<RefCell<Demo>>) -> Result<(), Error> {
         let elements = demo.borrow().elements.clone();
+
+        let callback_demo = demo.clone();
+        let mouse_down_callback = Closure::wrap(Box::new(move |mouse_event| {
+            handle_error("mouse down callback", || {
+                callback_demo.borrow_mut().mouse_down(mouse_event)
+            });
+        }) as Box<FnMut(MouseEvent)>);
+        AsRef::<HtmlElement>::as_ref(&elements.canvas)
+            .set_onmousedown(Some(mouse_down_callback.as_ref().unchecked_ref()));
+        mouse_down_callback.forget();
 
         let callback_demo = demo.clone();
         let mouse_move_callback = Closure::wrap(Box::new(move |mouse_event| {
@@ -216,11 +228,19 @@ impl Demo {
         Ok(())
     }
 
-    fn mouse_move(&mut self, _mouse_event: MouseEvent) -> Result<(), Error> {
+    fn mouse_down(&mut self, mouse_event: MouseEvent) -> Result<(), Error> {
+        self.handle_mouse_event(mouse_event.x(), mouse_event.y())
+    }
+
+    fn mouse_move(&mut self, mouse_event: MouseEvent) -> Result<(), Error> {
+        if (mouse_event.buttons() & 1) != 0 {
+            self.handle_mouse_event(mouse_event.x(), mouse_event.y())?;
+        }
         Ok(())
     }
 
-    fn set_mode(&mut self, _mode: Mode) -> Result<(), Error> {
+    fn set_mode(&mut self, mode: Mode) -> Result<(), Error> {
+        self.mode = mode;
         Ok(())
     }
 
@@ -252,80 +272,36 @@ impl Demo {
         self.context.clear(
             WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
         );
-
-        let vertices = [
-            -0.7, -0.7, 1.0, 0.0, 0.0, 0.7, -0.7, 0.0, 1.0, 0.0, 0.0, 0.7, 0.0, 0.0, 1.0,
-        ];
-        let vert_array =
-            js_sys::Float32Array::new(&wasm_bindgen::JsValue::from(vertices.len() as u32));
-        for (i, f) in vertices.iter().enumerate() {
-            vert_array.fill(*f, i as u32, (i + 1) as u32);
-        }
-
-        let buffer = self
-            .context
-            .create_buffer()
-            .ok_or_else(|| err_msg("could not create buffer"))?;
-        self.context
-            .bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        self.context.buffer_data_with_opt_array_buffer(
-            WebGlRenderingContext::ARRAY_BUFFER,
-            Some(&vert_array.buffer()),
-            WebGlRenderingContext::STATIC_DRAW,
-        );
-        self.context.vertex_attrib_pointer_with_i32(
-            0,
-            2,
-            WebGlRenderingContext::FLOAT,
-            false,
-            5 * 4,
-            0 * 4,
-        );
-        self.context.enable_vertex_attrib_array(0);
-
-        self.context.vertex_attrib_pointer_with_i32(
-            1,
-            3,
-            WebGlRenderingContext::FLOAT,
-            false,
-            5 * 4,
-            2 * 4,
-        );
-        self.context.enable_vertex_attrib_array(1);
-
         self.context.clear_color(0.0, 0.0, 0.0, 1.0);
         self.context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
 
-        self.context.draw_arrays(
-            WebGlRenderingContext::TRIANGLES,
-            0,
-            (vertices.len() / 5) as i32,
-        );
+        self.block_lighting.draw()?;
+
+        Ok(())
+    }
+
+    fn handle_mouse_event(&mut self, x: i32, y: i32) -> Result<(), Error> {
+        let x = x as f32 / self.width as f32;
+        let y = 1.0 - y as f32 / self.height as f32;
+
+        if x < 0.0 || x > 1.0 || y < 0.0 || y > 1.0 {
+            return Ok(());
+        }
+
+        let (xcount, ycount) = self.block_lighting.block_count();
+        let xi = (x * xcount as f32).floor() as u32;
+        let yi = (y * ycount as f32).floor() as u32;
+
+        let changed = match self.mode {
+            Mode::SolidBlock => self.block_lighting.set_block_state(xi, yi, true),
+            Mode::Erase => self.block_lighting.set_block_state(xi, yi, false),
+            _ => false,
+        };
+
+        if changed {
+            self.draw()?;
+        }
 
         Ok(())
     }
 }
-
-const VERTEX_SHADER: &str = r#"
-    precision mediump float;
-
-    attribute vec2 a_position;
-    attribute vec3 a_color;
-
-    varying vec3 v_color;
-
-    void main() {
-        v_color = a_color;
-        gl_Position = vec4(a_position, 0.0, 1.0);
-    }
-"#;
-
-const FRAGMENT_SHADER: &str = r#"
-    precision mediump float;
-
-    varying vec3 v_color;
-
-    void main() {
-        gl_FragColor = vec4(v_color, 1.0);
-    }
-"#;

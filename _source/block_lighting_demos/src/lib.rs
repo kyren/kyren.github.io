@@ -5,6 +5,7 @@ extern crate js_sys;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
+mod blocks;
 mod demo;
 mod glutil;
 mod util;

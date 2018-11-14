@@ -1,10 +1,11 @@
 use std::u32;
 
 use failure::{err_msg, Error};
-use js_sys::Float32Array;
-use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext};
+use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlTexture};
 
+use f32_array::F32Array;
 use glutil::{compile_shader, link_program};
+use util::js_err;
 
 pub struct BlockLighting {
     context: WebGlRenderingContext,
@@ -15,6 +16,8 @@ pub struct BlockLighting {
     block_size: (f32, f32),
     block_state: Vec<bool>,
     block_buffer: Option<(WebGlBuffer, u32)>,
+
+    lighting_texture: WebGlTexture,
 }
 
 impl BlockLighting {
@@ -35,6 +38,28 @@ impl BlockLighting {
         )?;
         let program = link_program(&context, [vert_shader, frag_shader].iter())?;
 
+        let lighting_texture = context
+            .create_texture()
+            .ok_or_else(|| err_msg("cannot create lighting texture"))?;
+        context.bind_texture(WebGlRenderingContext::TEXTURE_2D, Some(&lighting_texture));
+
+        let mut pixels = vec![
+            0, 0, 255, 255, 0, 255, 0, 255, 255, 0, 0, 255, 255, 255, 255, 255,
+        ];
+        context
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                WebGlRenderingContext::TEXTURE_2D,
+                0,
+                WebGlRenderingContext::RGBA as i32,
+                2,
+                2,
+                0,
+                WebGlRenderingContext::RGBA,
+                WebGlRenderingContext::UNSIGNED_BYTE,
+                Some(&mut pixels),
+            )
+            .map_err(js_err)?;
+
         Ok(BlockLighting {
             context,
             program,
@@ -43,6 +68,7 @@ impl BlockLighting {
             block_count: (blocks_horizontal, blocks_vertical),
             block_size: (1.0 / blocks_horizontal as f32, 1.0 / blocks_vertical as f32),
             block_state: vec![false; blocks_horizontal as usize * blocks_vertical as usize],
+            lighting_texture,
         })
     }
 
@@ -95,6 +121,35 @@ impl BlockLighting {
         self.context.enable_vertex_attrib_array(1);
 
         self.context.use_program(Some(&self.program));
+
+        let texture_uniform_locaiton = self
+            .context
+            .get_uniform_location(&self.program, "lighting")
+            .ok_or_else(|| err_msg("cannot find 'lighting' unifomr"))?;
+
+        self.context.tex_parameteri(
+            WebGlRenderingContext::TEXTURE_2D,
+            WebGlRenderingContext::TEXTURE_MIN_FILTER,
+            WebGlRenderingContext::NEAREST as i32,
+        );
+        self.context.tex_parameteri(
+            WebGlRenderingContext::TEXTURE_2D,
+            WebGlRenderingContext::TEXTURE_WRAP_S,
+            WebGlRenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        self.context.tex_parameteri(
+            WebGlRenderingContext::TEXTURE_2D,
+            WebGlRenderingContext::TEXTURE_WRAP_T,
+            WebGlRenderingContext::CLAMP_TO_EDGE as i32,
+        );
+
+        self.context.bind_texture(
+            WebGlRenderingContext::TEXTURE_2D,
+            Some(&self.lighting_texture),
+        );
+        self.context
+            .uniform1iv_with_i32_array(Some(&texture_uniform_locaiton), &mut [0]);
+
         self.context
             .draw_arrays(WebGlRenderingContext::TRIANGLES, 0, block_buffer.1 as i32);
 
@@ -158,61 +213,6 @@ fn block_index(width: u32, x: u32, y: u32) -> usize {
     y as usize * width as usize + x as usize
 }
 
-struct F32Array {
-    array: Float32Array,
-    len: u32,
-}
-
-impl F32Array {
-    fn new() -> F32Array {
-        F32Array {
-            array: Float32Array::new_with_length(0),
-            len: 0,
-        }
-    }
-
-    fn clear(&mut self) {
-        self.resize(0, 0.0);
-    }
-
-    fn resize(&mut self, new_len: u32, fill: f32) {
-        if new_len > self.array.length() {
-            let new_capacity =
-                new_len.max((self.array.length()).checked_mul(2).unwrap_or(u32::MAX));
-            let new_array = Float32Array::new_with_length(new_capacity);
-
-            self.array.for_each(&mut |v, i, _| {
-                new_array.fill(v, i, i + 1);
-            });
-            new_array.fill(fill, self.len, new_len);
-
-            self.array = new_array;
-            self.len = new_len;
-        } else {
-            self.array.fill(fill, self.len, new_len);
-            self.len = new_len;
-        }
-    }
-
-    fn len(&self) -> u32 {
-        self.len
-    }
-
-    fn set(&mut self, i: u32, v: f32) {
-        self.array.fill(v, i, i + 1);
-    }
-
-    fn push(&mut self, v: f32) {
-        let i = self.len();
-        self.resize(i + 1, 0.0);
-        self.set(i, v);
-    }
-
-    fn visit<R, F: FnOnce(&Float32Array) -> R>(&self, f: F) -> R {
-        f(&self.array.subarray(0, self.len))
-    }
-}
-
 const VERTEX_SHADER: &str = r#"
     precision mediump float;
 
@@ -220,9 +220,11 @@ const VERTEX_SHADER: &str = r#"
     attribute vec3 a_color;
 
     varying vec3 v_color;
+    varying vec2 v_tex;
 
     void main() {
         v_color = a_color;
+        v_tex = a_position;
         gl_Position = vec4(a_position * 2.0 - 1.0, 0.0, 1.0);
     }
 "#;
@@ -230,9 +232,12 @@ const VERTEX_SHADER: &str = r#"
 const FRAGMENT_SHADER: &str = r#"
     precision mediump float;
 
+    uniform sampler2D lighting;
+
     varying vec3 v_color;
+    varying vec2 v_tex;
 
     void main() {
-        gl_FragColor = vec4(v_color, 1.0);
+        gl_FragColor = vec4(v_color, 1.0) * texture2D(lighting, v_tex);
     }
 "#;

@@ -263,6 +263,47 @@ __exports.__widl_f_buffer_data_with_opt_array_buffer_WebGLRenderingContext = fun
     __widl_f_buffer_data_with_opt_array_buffer_WebGLRenderingContext_target.call(getObject(arg0), arg1, getObject(arg2), arg3);
 };
 
+const __widl_f_tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.texImage2D || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.texImage2D does not exist`);
+};
+
+function getArrayU8FromWasm(ptr, len) {
+    return getUint8Memory().subarray(ptr / 1, ptr / 1 + len);
+}
+
+__exports.__widl_f_tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array_WebGLRenderingContext = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, exnptr) {
+    let varg9 = arg9 == 0 ? undefined : getArrayU8FromWasm(arg9, arg10);
+    try {
+        __widl_f_tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array_WebGLRenderingContext_target.call(getObject(arg0), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, varg9);
+    } catch (e) {
+        const view = getUint32Memory();
+        view[exnptr / 4] = 1;
+        view[exnptr / 4 + 1] = addHeapObject(e);
+
+    }
+};
+
+const __widl_f_uniform1iv_with_i32_array_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.uniform1iv || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.uniform1iv does not exist`);
+};
+
+let cachegetInt32Memory = null;
+function getInt32Memory() {
+    if (cachegetInt32Memory === null || cachegetInt32Memory.buffer !== wasm.memory.buffer) {
+        cachegetInt32Memory = new Int32Array(wasm.memory.buffer);
+    }
+    return cachegetInt32Memory;
+}
+
+function getArrayI32FromWasm(ptr, len) {
+    return getInt32Memory().subarray(ptr / 4, ptr / 4 + len);
+}
+
+__exports.__widl_f_uniform1iv_with_i32_array_WebGLRenderingContext = function(arg0, arg1, arg2, arg3) {
+    let varg2 = getArrayI32FromWasm(arg2, arg3);
+    __widl_f_uniform1iv_with_i32_array_WebGLRenderingContext_target.call(getObject(arg0), getObject(arg1), varg2);
+};
+
 const __widl_f_attach_shader_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.attachShader || function() {
     throw new Error(`wasm-bindgen: WebGLRenderingContext.attachShader does not exist`);
 };
@@ -277,6 +318,14 @@ const __widl_f_bind_buffer_WebGLRenderingContext_target = typeof WebGLRenderingC
 
 __exports.__widl_f_bind_buffer_WebGLRenderingContext = function(arg0, arg1, arg2) {
     __widl_f_bind_buffer_WebGLRenderingContext_target.call(getObject(arg0), arg1, getObject(arg2));
+};
+
+const __widl_f_bind_texture_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.bindTexture || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.bindTexture does not exist`);
+};
+
+__exports.__widl_f_bind_texture_WebGLRenderingContext = function(arg0, arg1, arg2) {
+    __widl_f_bind_texture_WebGLRenderingContext_target.call(getObject(arg0), arg1, getObject(arg2));
 };
 
 const __widl_f_clear_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.clear || function() {
@@ -332,6 +381,17 @@ const __widl_f_create_shader_WebGLRenderingContext_target = typeof WebGLRenderin
 __exports.__widl_f_create_shader_WebGLRenderingContext = function(arg0, arg1) {
 
     const val = __widl_f_create_shader_WebGLRenderingContext_target.call(getObject(arg0), arg1);
+    return isLikeNone(val) ? 0 : addHeapObject(val);
+
+};
+
+const __widl_f_create_texture_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.createTexture || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.createTexture does not exist`);
+};
+
+__exports.__widl_f_create_texture_WebGLRenderingContext = function(arg0) {
+
+    const val = __widl_f_create_texture_WebGLRenderingContext_target.call(getObject(arg0));
     return isLikeNone(val) ? 0 : addHeapObject(val);
 
 };
@@ -394,6 +454,18 @@ __exports.__widl_f_get_shader_parameter_WebGLRenderingContext = function(arg0, a
     return addHeapObject(__widl_f_get_shader_parameter_WebGLRenderingContext_target.call(getObject(arg0), getObject(arg1), arg2));
 };
 
+const __widl_f_get_uniform_location_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.getUniformLocation || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.getUniformLocation does not exist`);
+};
+
+__exports.__widl_f_get_uniform_location_WebGLRenderingContext = function(arg0, arg1, arg2, arg3) {
+    let varg2 = getStringFromWasm(arg2, arg3);
+
+    const val = __widl_f_get_uniform_location_WebGLRenderingContext_target.call(getObject(arg0), getObject(arg1), varg2);
+    return isLikeNone(val) ? 0 : addHeapObject(val);
+
+};
+
 const __widl_f_link_program_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.linkProgram || function() {
     throw new Error(`wasm-bindgen: WebGLRenderingContext.linkProgram does not exist`);
 };
@@ -409,6 +481,14 @@ const __widl_f_shader_source_WebGLRenderingContext_target = typeof WebGLRenderin
 __exports.__widl_f_shader_source_WebGLRenderingContext = function(arg0, arg1, arg2, arg3) {
     let varg2 = getStringFromWasm(arg2, arg3);
     __widl_f_shader_source_WebGLRenderingContext_target.call(getObject(arg0), getObject(arg1), varg2);
+};
+
+const __widl_f_tex_parameteri_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.texParameteri || function() {
+    throw new Error(`wasm-bindgen: WebGLRenderingContext.texParameteri does not exist`);
+};
+
+__exports.__widl_f_tex_parameteri_WebGLRenderingContext = function(arg0, arg1, arg2, arg3) {
+    __widl_f_tex_parameteri_WebGLRenderingContext_target.call(getObject(arg0), arg1, arg2, arg3);
 };
 
 const __widl_f_use_program_WebGLRenderingContext_target = typeof WebGLRenderingContext === 'undefined' ? null : WebGLRenderingContext.prototype.useProgram || function() {
@@ -605,15 +685,15 @@ __exports.__wbindgen_string_get = function(i, len_ptr) {
 
 __exports.__wbindgen_cb_forget = dropRef;
 
-__exports.__wbindgen_closure_wrapper446 = function(a, b, fi, di, _ignored) {
+__exports.__wbindgen_closure_wrapper459 = function(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
-    const cb = function() {
+    const cb = function(arg0) {
         this.cnt++;
         let a = this.a;
         this.a = 0;
         try {
-            return f(a, b);
+            return f(a, b, addHeapObject(arg0));
 
         } finally {
             this.a = a;
@@ -629,15 +709,15 @@ __exports.__wbindgen_closure_wrapper446 = function(a, b, fi, di, _ignored) {
     return addHeapObject(real);
 };
 
-__exports.__wbindgen_closure_wrapper450 = function(a, b, fi, di, _ignored) {
+__exports.__wbindgen_closure_wrapper463 = function(a, b, fi, di, _ignored) {
     const f = wasm.__wbg_function_table.get(fi);
     const d = wasm.__wbg_function_table.get(di);
-    const cb = function(arg0) {
+    const cb = function() {
         this.cnt++;
         let a = this.a;
         this.a = 0;
         try {
-            return f(a, b, addHeapObject(arg0));
+            return f(a, b);
 
         } finally {
             this.a = a;

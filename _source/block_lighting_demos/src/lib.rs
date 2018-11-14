@@ -7,6 +7,7 @@ extern crate web_sys;
 
 mod blocks;
 mod demo;
+mod f32_array;
 mod glutil;
 mod util;
 

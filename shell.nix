@@ -1,15 +1,17 @@
 let
   moz_overlay = import (
-    builtins.fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz
+    builtins.fetchTarball https://github.com/mozilla/nixpkgs-mozilla/archive/cebceca52d54c3df371c2265903f008c7a72980b.tar.gz
   );
 
-  nixpkgs = import <nixpkgs> {
+  nixpkgs = import (
+    builtins.fetchTarball https://github.com/NixOS/nixpkgs-channels/archive/5f3be9bc4b45f9da2d7c6768c0d187ef3f2643f7.tar.gz
+  ) {
     overlays = [ moz_overlay ];
   };
 in with nixpkgs;
 let
   rust_channel = rustChannelOf {
-    date = "2018-11-01";
+    date = "2019-03-14";
     channel = "nightly";
   };
 
@@ -49,11 +51,9 @@ let
     '';
   };
 
-  buildRustPackage = callPackage (import <nixpkgs/pkgs/build-support/rust>) {
-    rust = {
-      rustc = rust_channel.rust;
-      cargo = rust_channel.cargo;
-    };
+  buildRustPackage = rustPlatform.buildRustPackage.override {
+    rustc = rust_channel.rust;
+    cargo = rust_channel.cargo;
   };
 
   wasm-bindgen-cli = buildRustPackage rec {
@@ -76,5 +76,6 @@ in
       jekyll_env
       rust
       wasm-bindgen-cli
+      python3
     ];
   }

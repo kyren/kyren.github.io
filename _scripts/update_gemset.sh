@@ -4,4 +4,6 @@
 set -e
 cd "`dirname \"$0\"`/.."
 
-exec jekyll serve --force-polling
+bundler update
+bundler lock
+bundix --gemset=./gemset.nix

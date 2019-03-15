@@ -284,7 +284,7 @@ impl Demo {
         let x = x as f32 / self.width as f32;
         let y = 1.0 - y as f32 / self.height as f32;
 
-        if x < 0.0 || x > 1.0 || y < 0.0 || y > 1.0 {
+        if x < 0.0 || x >= 1.0 || y < 0.0 || y >= 1.0 {
             return Ok(());
         }
 

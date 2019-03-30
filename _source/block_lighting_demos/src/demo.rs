@@ -18,7 +18,8 @@ pub struct DemoElements {
     pub canvas: HtmlCanvasElement,
 
     pub mode_section: HtmlElement,
-    pub solid_block_mode_radio: HtmlElement,
+    pub foreground_block_mode_radio: HtmlElement,
+    pub background_block_mode_radio: HtmlElement,
     pub light_block_mode_radio: HtmlElement,
     pub point_light_mode_radio: HtmlElement,
     pub erase_mode_radio: HtmlElement,
@@ -51,7 +52,8 @@ pub struct Demo {
 
 #[derive(Debug)]
 enum Mode {
-    SolidBlock,
+    ForegroundBlock,
+    BackgroundBlock,
     LightBlock,
     PointLight,
     Erase,
@@ -92,7 +94,7 @@ impl Demo {
             block_lighting,
             width,
             height,
-            mode: Mode::SolidBlock,
+            mode: Mode::ForegroundBlock,
         }));
 
         Demo::attach_callbacks(demo)?;
@@ -124,15 +126,26 @@ impl Demo {
         mouse_move_callback.forget();
 
         let callback_demo = demo.clone();
-        let solid_block_callback = Closure::wrap(Box::new(move || {
+        let foreground_block_callback = Closure::wrap(Box::new(move || {
             handle_error("mode change callback", || {
-                callback_demo.borrow_mut().set_mode(Mode::SolidBlock)
+                callback_demo.borrow_mut().set_mode(Mode::ForegroundBlock)
             });
         }) as Box<FnMut()>);
         elements
-            .solid_block_mode_radio
-            .set_onchange(Some(solid_block_callback.as_ref().unchecked_ref()));
-        solid_block_callback.forget();
+            .foreground_block_mode_radio
+            .set_onchange(Some(foreground_block_callback.as_ref().unchecked_ref()));
+        foreground_block_callback.forget();
+
+        let callback_demo = demo.clone();
+        let background_block_callback = Closure::wrap(Box::new(move || {
+            handle_error("mode change callback", || {
+                callback_demo.borrow_mut().set_mode(Mode::BackgroundBlock)
+            });
+        }) as Box<FnMut()>);
+        elements
+            .background_block_mode_radio
+            .set_onchange(Some(background_block_callback.as_ref().unchecked_ref()));
+        background_block_callback.forget();
 
         let callback_demo = demo.clone();
         let light_block_callback = Closure::wrap(Box::new(move || {
@@ -300,9 +313,12 @@ impl Demo {
         let yi = (y * ycount as f32).floor() as u32;
 
         let changed = match self.mode {
-            Mode::SolidBlock => self
+            Mode::ForegroundBlock => self
                 .block_lighting
-                .set_block_state(xi, yi, BlockState::Occluding),
+                .set_block_state(xi, yi, BlockState::Foreground),
+            Mode::BackgroundBlock => self
+                .block_lighting
+                .set_block_state(xi, yi, BlockState::Background),
             Mode::LightBlock => self
                 .block_lighting
                 .set_block_state(xi, yi, BlockState::Light),

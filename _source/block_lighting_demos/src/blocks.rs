@@ -33,7 +33,8 @@ const LIGHT_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BlockState {
     Empty,
-    Occluding,
+    Foreground,
+    Background,
     Light,
 }
 
@@ -310,7 +311,7 @@ impl BlockLighting {
                 let yc = y as f32 * self.block_size.1;
 
                 match self.block_state[block_index(self.block_count.0, x, y)] {
-                    BlockState::Occluding => {
+                    BlockState::Foreground => {
                         let mut xxhash = XxHash::with_seed(17);
                         xxhash.write_u32(x);
                         xxhash.write_u32(y);
@@ -325,7 +326,7 @@ impl BlockLighting {
 
                         if y == self.block_count.1 - 1
                             || self.block_state[block_index(self.block_count.0, x, y + 1)]
-                                != BlockState::Occluding
+                                == BlockState::Empty
                         {
                             let mut xxhash = XxHash::with_seed(23);
                             xxhash.write_u32(x);
@@ -338,6 +339,19 @@ impl BlockLighting {
                                 (1.0, 1.0, 1.0, 1.0),
                             );
                         }
+                    }
+                    BlockState::Background => {
+                        let mut xxhash = XxHash::with_seed(11);
+                        xxhash.write_u32(x);
+                        xxhash.write_u32(y);
+                        let block_tex = BLOCK_TEX_COORDS[(xxhash.finish() % 4) as usize];
+
+                        push_block(
+                            &mut self.work_array,
+                            (xc, yc, xc + w, yc + h),
+                            block_tex,
+                            (0.5, 0.5, 0.5, 1.0),
+                        );
                     }
                     BlockState::Light => {
                         let mut xxhash = XxHash::with_seed(29);

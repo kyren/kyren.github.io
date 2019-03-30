@@ -22,7 +22,8 @@ pub fn demo_init() {
         let canvas = get_element("canvas")?;
 
         let mode_section = get_element("mode_controls")?;
-        let solid_block_mode_radio = get_element("solid_block_mode")?;
+        let foreground_block_mode_radio = get_element("foreground_block_mode")?;
+        let background_block_mode_radio = get_element("background_block_mode")?;
         let light_block_mode_radio = get_element("light_block_mode")?;
         let point_light_mode_radio = get_element("point_light_mode")?;
         let erase_mode_radio = get_element("erase_mode")?;
@@ -48,7 +49,8 @@ pub fn demo_init() {
             canvas,
 
             mode_section,
-            solid_block_mode_radio,
+            foreground_block_mode_radio,
+            background_block_mode_radio,
             light_block_mode_radio,
             point_light_mode_radio,
             erase_mode_radio,

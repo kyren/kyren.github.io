@@ -18,6 +18,7 @@ use self::util::{get_element, handle_error};
 #[wasm_bindgen]
 pub fn demo_init() {
     handle_error("initialization", || {
+        let tile_texture = get_element("tile_texture")?;
         let canvas = get_element("canvas")?;
 
         let mode_section = get_element("mode_controls")?;
@@ -43,6 +44,7 @@ pub fn demo_init() {
         let reset_button = get_element("reset")?;
 
         demo::Demo::init(demo::DemoElements {
+            tile_texture,
             canvas,
 
             mode_section,

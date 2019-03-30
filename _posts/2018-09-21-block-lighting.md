@@ -1,6 +1,6 @@
 ---
 layout: post
-title: A Somewhat Novel 2D Block Lighting Algorithm
+title: A Neat 2D Block Lighting Algorithm
 ---
 
 <style>

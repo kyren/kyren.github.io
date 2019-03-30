@@ -5,14 +5,16 @@ use failure::{err_msg, Error};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{
-    HtmlCanvasElement, HtmlElement, HtmlInputElement, MouseEvent, WebGlRenderingContext,
+    HtmlCanvasElement, HtmlElement, HtmlImageElement, HtmlInputElement, MouseEvent,
+    WebGlRenderingContext,
 };
 
-use blocks::BlockLighting;
-use util::{handle_error, js_err, show_element};
+use crate::blocks::{BlockLighting, BlockState};
+use crate::util::{handle_error, js_err, show_element};
 
 #[derive(Clone)]
 pub struct DemoElements {
+    pub tile_texture: HtmlImageElement,
     pub canvas: HtmlCanvasElement,
 
     pub mode_section: HtmlElement,
@@ -73,8 +75,16 @@ impl Demo {
             .dyn_into::<WebGlRenderingContext>()
             .map_err(|_| err_msg("webgl context is incorrect type"))?;
         context.viewport(0, 0, width as i32, height as i32);
+        context.disable(WebGlRenderingContext::DEPTH_TEST);
+        context.enable(WebGlRenderingContext::BLEND);
+        context.blend_func(
+            WebGlRenderingContext::SRC_ALPHA,
+            WebGlRenderingContext::ONE_MINUS_SRC_ALPHA,
+        );
+        context.blend_equation(WebGlRenderingContext::FUNC_ADD);
 
-        let block_lighting = BlockLighting::new(context.clone(), 24, 18)?;
+        let block_lighting =
+            BlockLighting::new(context.clone(), elements.tile_texture.clone(), 24, 18)?;
 
         let demo = Rc::new(RefCell::new(Demo {
             elements,
@@ -269,9 +279,6 @@ impl Demo {
     }
 
     fn draw(&mut self) -> Result<(), Error> {
-        self.context.clear(
-            WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
-        );
         self.context.clear_color(0.0, 0.0, 0.0, 1.0);
         self.context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
 
@@ -293,8 +300,15 @@ impl Demo {
         let yi = (y * ycount as f32).floor() as u32;
 
         let changed = match self.mode {
-            Mode::SolidBlock => self.block_lighting.set_block_state(xi, yi, true),
-            Mode::Erase => self.block_lighting.set_block_state(xi, yi, false),
+            Mode::SolidBlock => self
+                .block_lighting
+                .set_block_state(xi, yi, BlockState::Occluding),
+            Mode::LightBlock => self
+                .block_lighting
+                .set_block_state(xi, yi, BlockState::Light),
+            Mode::Erase => self
+                .block_lighting
+                .set_block_state(xi, yi, BlockState::Empty),
             _ => false,
         };
 

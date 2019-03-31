@@ -1,7 +1,9 @@
 use std::cell::RefCell;
+use std::hash::Hasher;
 use std::rc::Rc;
 
 use failure::{err_msg, Error};
+use twox_hash::XxHash;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{
@@ -9,45 +11,108 @@ use web_sys::{
     WebGlRenderingContext,
 };
 
-use crate::blocks::{BlockLighting, BlockState};
-use crate::util::{handle_error, js_err, show_element};
+use crate::renderer::Renderer;
+use crate::util::{get_element, handle_error, js_err, show_element};
 
-#[derive(Clone)]
-pub struct DemoElements {
-    pub tile_texture: HtmlImageElement,
-    pub canvas: HtmlCanvasElement,
+#[wasm_bindgen]
+pub fn demo_init() {
+    handle_error("initialization", || {
+        let main_texture = get_element("main_texture")?;
+        let canvas = get_element("canvas")?;
 
-    pub mode_section: HtmlElement,
-    pub foreground_block_mode_radio: HtmlElement,
-    pub background_block_mode_radio: HtmlElement,
-    pub light_block_mode_radio: HtmlElement,
-    pub point_light_mode_radio: HtmlElement,
-    pub erase_mode_radio: HtmlElement,
+        let mode_section = get_element("mode_controls")?;
+        let foreground_block_mode_radio = get_element("foreground_block_mode")?;
+        let background_block_mode_radio = get_element("background_block_mode")?;
+        let light_block_mode_radio = get_element("light_block_mode")?;
+        let point_light_mode_radio = get_element("point_light_mode")?;
+        let erase_mode_radio = get_element("erase_mode")?;
 
-    pub angle_section: HtmlElement,
-    pub angle_slider: HtmlInputElement,
+        let angle_section = get_element("angle_controls")?;
+        let angle_slider = get_element("angle")?;
 
-    pub pointiness_section: HtmlElement,
-    pub pointiness_slider: HtmlInputElement,
+        let pointiness_section = get_element("pointiness_controls")?;
+        let pointiness_slider = get_element("pointiness")?;
 
-    pub spread_section: HtmlElement,
-    pub spread_steps_slider: HtmlInputElement,
+        let spread_section = get_element("spread_controls")?;
+        let spread_steps_slider = get_element("spread_steps")?;
 
-    pub clear_section: HtmlElement,
-    pub clear_button: HtmlElement,
+        let clear_section = get_element("clear_controls")?;
+        let clear_button = get_element("clear")?;
 
-    pub algorithm_section: HtmlElement,
-    pub advance_button: HtmlElement,
-    pub reset_button: HtmlElement,
+        let algorithm_section = get_element("algorithm_controls")?;
+        let advance_button = get_element("advance")?;
+        let reset_button = get_element("reset")?;
+
+        Demo::init(DemoElements {
+            main_texture,
+            canvas,
+
+            mode_section,
+            foreground_block_mode_radio,
+            background_block_mode_radio,
+            light_block_mode_radio,
+            point_light_mode_radio,
+            erase_mode_radio,
+
+            angle_section,
+            angle_slider,
+
+            pointiness_section,
+            pointiness_slider,
+
+            spread_section,
+            spread_steps_slider,
+
+            clear_section,
+            clear_button,
+
+            algorithm_section,
+            advance_button,
+            reset_button,
+        })?;
+
+        Ok(())
+    });
 }
 
-pub struct Demo {
+#[derive(Clone)]
+struct DemoElements {
+    main_texture: HtmlImageElement,
+    canvas: HtmlCanvasElement,
+
+    mode_section: HtmlElement,
+    foreground_block_mode_radio: HtmlElement,
+    background_block_mode_radio: HtmlElement,
+    light_block_mode_radio: HtmlElement,
+    point_light_mode_radio: HtmlElement,
+    erase_mode_radio: HtmlElement,
+
+    angle_section: HtmlElement,
+    angle_slider: HtmlInputElement,
+
+    pointiness_section: HtmlElement,
+    pointiness_slider: HtmlInputElement,
+
+    spread_section: HtmlElement,
+    spread_steps_slider: HtmlInputElement,
+
+    clear_section: HtmlElement,
+    clear_button: HtmlElement,
+
+    algorithm_section: HtmlElement,
+    advance_button: HtmlElement,
+    reset_button: HtmlElement,
+}
+
+struct Demo {
     elements: DemoElements,
     context: WebGlRenderingContext,
-    block_lighting: BlockLighting,
     width: u32,
     height: u32,
+
     mode: Mode,
+    block_state: Vec<BlockState>,
+    renderer: Renderer,
 }
 
 #[derive(Debug)]
@@ -59,12 +124,51 @@ enum Mode {
     Erase,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum BlockState {
+    Empty,
+    Foreground,
+    Background,
+    Light,
+}
+
+const BLOCK_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
+    (0.0 / 4.0, 1.0 / 4.0, 1.0 / 4.0, 0.0 / 4.0),
+    (1.0 / 4.0, 1.0 / 4.0, 2.0 / 4.0, 0.0 / 4.0),
+    (0.0 / 4.0, 2.0 / 4.0, 1.0 / 4.0, 1.0 / 4.0),
+    (1.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0, 1.0 / 4.0),
+];
+
+const GRASS_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
+    (2.0 / 4.0, 1.0 / 4.0, 3.0 / 4.0, 0.0 / 4.0),
+    (3.0 / 4.0, 1.0 / 4.0, 4.0 / 4.0, 0.0 / 4.0),
+    (2.0 / 4.0, 2.0 / 4.0, 3.0 / 4.0, 1.0 / 4.0),
+    (3.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 1.0 / 4.0),
+];
+
+const LIGHT_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
+    (0.0 / 4.0, 3.0 / 4.0, 1.0 / 4.0, 2.0 / 4.0),
+    (1.0 / 4.0, 3.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0),
+    (0.0 / 4.0, 4.0 / 4.0, 1.0 / 4.0, 3.0 / 4.0),
+    (1.0 / 4.0, 4.0 / 4.0, 2.0 / 4.0, 3.0 / 4.0),
+];
+
+const BACKGROUND_TEX_COORDS: (f32, f32, f32, f32) = (3.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0, 3.0 / 4.0);
+
+const BLOCK_COUNT: (u32, u32) = (24, 18);
+const BLOCK_SIZE: (f32, f32) = (1.0 / BLOCK_COUNT.0 as f32, 1.0 / BLOCK_COUNT.1 as f32);
+
 impl Demo {
-    pub fn init(elements: DemoElements) -> Result<(), Error> {
+    fn init(elements: DemoElements) -> Result<(), Error> {
         let width = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_width() as u32;
         let height = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_height() as u32;
 
         show_element(&elements.mode_section)?;
+        show_element(&elements.angle_section)?;
+        show_element(&elements.pointiness_section)?;
+        show_element(&elements.spread_section)?;
+        show_element(&elements.clear_section)?;
+        show_element(&elements.algorithm_section)?;
 
         elements.canvas.set_width(width);
         elements.canvas.set_height(height);
@@ -85,16 +189,16 @@ impl Demo {
         );
         context.blend_equation(WebGlRenderingContext::FUNC_ADD);
 
-        let block_lighting =
-            BlockLighting::new(context.clone(), elements.tile_texture.clone(), 24, 18)?;
+        let renderer = Renderer::new(context.clone(), elements.main_texture.clone())?;
 
         let demo = Rc::new(RefCell::new(Demo {
             elements,
             context,
-            block_lighting,
             width,
             height,
             mode: Mode::ForegroundBlock,
+            block_state: vec![BlockState::Empty; BLOCK_COUNT.0 as usize * BLOCK_COUNT.1 as usize],
+            renderer,
         }));
 
         Demo::attach_callbacks(demo)?;
@@ -295,7 +399,76 @@ impl Demo {
         self.context.clear_color(0.0, 0.0, 0.0, 1.0);
         self.context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
 
-        self.block_lighting.draw()?;
+        self.renderer.start(1, 1, &[255, 255, 255])?;
+
+        self.renderer.draw(
+            (0.0, 0.0, 1.0, 1.0),
+            BACKGROUND_TEX_COORDS,
+            (1.0, 1.0, 1.0, 1.0),
+        );
+
+        for y in 0..BLOCK_COUNT.1 {
+            for x in 0..BLOCK_COUNT.0 {
+                let xc = x as f32 * BLOCK_SIZE.0;
+                let yc = y as f32 * BLOCK_SIZE.1;
+
+                match self.block_state[block_index(x, y)] {
+                    BlockState::Foreground => {
+                        let mut xxhash = XxHash::with_seed(17);
+                        xxhash.write_u32(x);
+                        xxhash.write_u32(y);
+                        let block_tex = BLOCK_TEX_COORDS[(xxhash.finish() % 4) as usize];
+
+                        self.renderer.draw(
+                            (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
+                            block_tex,
+                            (1.0, 1.0, 1.0, 1.0),
+                        );
+
+                        if y == BLOCK_COUNT.1 - 1
+                            || self.block_state[block_index(x, y + 1)] == BlockState::Empty
+                        {
+                            let mut xxhash = XxHash::with_seed(23);
+                            xxhash.write_u32(x);
+                            xxhash.write_u32(y);
+                            let grass_tex = GRASS_TEX_COORDS[(xxhash.finish() % 4) as usize];
+                            self.renderer.draw(
+                                (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
+                                grass_tex,
+                                (1.0, 1.0, 1.0, 1.0),
+                            );
+                        }
+                    }
+                    BlockState::Background => {
+                        let mut xxhash = XxHash::with_seed(11);
+                        xxhash.write_u32(x);
+                        xxhash.write_u32(y);
+                        let block_tex = BLOCK_TEX_COORDS[(xxhash.finish() % 4) as usize];
+
+                        self.renderer.draw(
+                            (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
+                            block_tex,
+                            (0.5, 0.5, 0.5, 1.0),
+                        );
+                    }
+                    BlockState::Light => {
+                        let mut xxhash = XxHash::with_seed(29);
+                        xxhash.write_u32(x);
+                        xxhash.write_u32(y);
+                        let block_tex = LIGHT_TEX_COORDS[(xxhash.finish() % 4) as usize];
+
+                        self.renderer.draw(
+                            (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
+                            block_tex,
+                            (1.0, 1.0, 1.0, 1.0),
+                        );
+                    }
+                    BlockState::Empty => {}
+                }
+            }
+        }
+
+        self.renderer.finish()?;
 
         Ok(())
     }
@@ -308,30 +481,37 @@ impl Demo {
             return Ok(());
         }
 
-        let (xcount, ycount) = self.block_lighting.block_count();
-        let xi = (x * xcount as f32).floor() as u32;
-        let yi = (y * ycount as f32).floor() as u32;
+        let xi = (x * BLOCK_COUNT.0 as f32).floor() as u32;
+        let yi = (y * BLOCK_COUNT.1 as f32).floor() as u32;
+        let bi = block_index(xi, yi);
 
-        let changed = match self.mode {
-            Mode::ForegroundBlock => self
-                .block_lighting
-                .set_block_state(xi, yi, BlockState::Foreground),
-            Mode::BackgroundBlock => self
-                .block_lighting
-                .set_block_state(xi, yi, BlockState::Background),
-            Mode::LightBlock => self
-                .block_lighting
-                .set_block_state(xi, yi, BlockState::Light),
-            Mode::Erase => self
-                .block_lighting
-                .set_block_state(xi, yi, BlockState::Empty),
-            _ => false,
+        let block_state_change = match self.mode {
+            Mode::ForegroundBlock => {
+                Some(BlockState::Foreground)
+            }
+            Mode::BackgroundBlock => {
+                Some(BlockState::Background)
+            }
+            Mode::LightBlock => {
+                Some(BlockState::Light)
+            }
+            Mode::Erase => {
+                Some(BlockState::Empty)
+            }
+            _ => None,
         };
 
-        if changed {
-            self.draw()?;
+        if let Some(new_block_state) = block_state_change {
+            if self.block_state[bi] != new_block_state {
+                self.block_state[bi] = new_block_state;
+                self.draw()?;
+            }
         }
 
         Ok(())
     }
+}
+
+fn block_index(x: u32, y: u32) -> usize {
+    y as usize * BLOCK_COUNT.0 as usize + x as usize
 }

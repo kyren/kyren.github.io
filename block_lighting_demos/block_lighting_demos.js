@@ -192,6 +192,14 @@ __exports.__widl_f_buttons_MouseEvent = function(arg0) {
     return getObject(arg0).buttons;
 };
 
+__exports.__widl_f_movement_x_MouseEvent = function(arg0) {
+    return getObject(arg0).movementX;
+};
+
+__exports.__widl_f_movement_y_MouseEvent = function(arg0) {
+    return getObject(arg0).movementY;
+};
+
 __exports.__widl_instanceof_WebGLRenderingContext = function(idx) { return getObject(idx) instanceof WebGLRenderingContext ? 1 : 0; };
 
 __exports.__widl_f_buffer_data_with_opt_array_buffer_WebGLRenderingContext = function(arg0, arg1, arg2, arg3) {
@@ -479,7 +487,7 @@ __exports.__wbindgen_throw = function(ptr, len) {
     throw new Error(getStringFromWasm(ptr, len));
 };
 
-__exports.__wbindgen_closure_wrapper513 = function(a, b, _ignored) {
+__exports.__wbindgen_closure_wrapper514 = function(a, b, _ignored) {
     const f = wasm.__wbg_function_table.get(31);
     const d = wasm.__wbg_function_table.get(32);
     const cb = function(arg0) {
@@ -503,7 +511,7 @@ __exports.__wbindgen_closure_wrapper513 = function(a, b, _ignored) {
     return addHeapObject(real);
 };
 
-__exports.__wbindgen_closure_wrapper517 = function(a, b, _ignored) {
+__exports.__wbindgen_closure_wrapper518 = function(a, b, _ignored) {
     const f = wasm.__wbg_function_table.get(34);
     const d = wasm.__wbg_function_table.get(32);
     const cb = function() {

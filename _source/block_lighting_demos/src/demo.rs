@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::f32;
 use std::hash::Hasher;
 use std::rc::Rc;
 
@@ -12,7 +13,7 @@ use web_sys::{
 };
 
 use crate::renderer::Renderer;
-use crate::util::{get_element, handle_error, js_err, show_element};
+use crate::util::{console_log, get_element, handle_error, js_err, show_element};
 
 #[wasm_bindgen]
 pub fn demo_init() {
@@ -111,11 +112,13 @@ struct Demo {
     height: u32,
 
     mode: Mode,
+    cursor: Cursor,
     block_state: Vec<BlockState>,
+    point_lights: Vec<(f32, f32)>,
     renderer: Renderer,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug)]
 enum Mode {
     ForegroundBlock,
     BackgroundBlock,
@@ -124,7 +127,15 @@ enum Mode {
     Erase,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(PartialEq, Debug)]
+enum Cursor {
+    None,
+    Block(u32, u32),
+    ExistingLight(usize),
+    NewLight(f32, f32),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BlockState {
     Empty,
     Foreground,
@@ -146,17 +157,21 @@ const GRASS_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
     (3.0 / 4.0, 2.0 / 4.0, 4.0 / 4.0, 1.0 / 4.0),
 ];
 
-const LIGHT_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
+const LIGHT_BLOCK_TEX_COORDS: [(f32, f32, f32, f32); 4] = [
     (0.0 / 4.0, 3.0 / 4.0, 1.0 / 4.0, 2.0 / 4.0),
     (1.0 / 4.0, 3.0 / 4.0, 2.0 / 4.0, 2.0 / 4.0),
     (0.0 / 4.0, 4.0 / 4.0, 1.0 / 4.0, 3.0 / 4.0),
     (1.0 / 4.0, 4.0 / 4.0, 2.0 / 4.0, 3.0 / 4.0),
 ];
 
+const POINT_LIGHT_TEX_COORDS: (f32, f32, f32, f32) = (2.0 / 4.0, 3.0 / 4.0, 3.0 / 4.0, 2.0 / 4.0);
+const BLOCK_SELECT_TEX_COORDS: (f32, f32, f32, f32) = (3.0 / 4.0, 3.0 / 4.0, 4.0 / 4.0, 2.0 / 4.0);
+const LIGHT_SELECT_TEX_COORDS: (f32, f32, f32, f32) = (2.0 / 4.0, 4.0 / 4.0, 3.0 / 4.0, 3.0 / 4.0);
 const BACKGROUND_TEX_COORDS: (f32, f32, f32, f32) = (3.0 / 4.0, 4.0 / 4.0, 4.0 / 4.0, 3.0 / 4.0);
 
 const BLOCK_COUNT: (u32, u32) = (24, 18);
 const BLOCK_SIZE: (f32, f32) = (1.0 / BLOCK_COUNT.0 as f32, 1.0 / BLOCK_COUNT.1 as f32);
+const LIGHT_SELECTION_RADIUS: f32 = 1.0 / 30.0;
 
 impl Demo {
     fn init(elements: DemoElements) -> Result<(), Error> {
@@ -164,11 +179,11 @@ impl Demo {
         let height = AsRef::<HtmlElement>::as_ref(&elements.canvas).offset_height() as u32;
 
         show_element(&elements.mode_section)?;
-        show_element(&elements.angle_section)?;
-        show_element(&elements.pointiness_section)?;
-        show_element(&elements.spread_section)?;
-        show_element(&elements.clear_section)?;
-        show_element(&elements.algorithm_section)?;
+        // show_element(&elements.angle_section)?;
+        // show_element(&elements.pointiness_section)?;
+        // show_element(&elements.spread_section)?;
+        // show_element(&elements.clear_section)?;
+        // show_element(&elements.algorithm_section)?;
 
         elements.canvas.set_width(width);
         elements.canvas.set_height(height);
@@ -197,7 +212,9 @@ impl Demo {
             width,
             height,
             mode: Mode::ForegroundBlock,
+            cursor: Cursor::None,
             block_state: vec![BlockState::Empty; BLOCK_COUNT.0 as usize * BLOCK_COUNT.1 as usize],
+            point_lights: Vec::new(),
             renderer,
         }));
 
@@ -356,12 +373,74 @@ impl Demo {
     }
 
     fn mouse_down(&mut self, mouse_event: MouseEvent) -> Result<(), Error> {
-        self.handle_mouse_event(mouse_event.x(), mouse_event.y())
+        let mut needs_draw = false;
+        if let Some((x, y)) = self.screen_coordinate(mouse_event.x(), mouse_event.y()) {
+            needs_draw |= self.update_cursor(x, y);
+            if self.mode == Mode::PointLight {
+                match self.cursor {
+                    Cursor::ExistingLight(_) => {}
+                    _ => {
+                        self.point_lights.push((x, y));
+                        self.update_cursor(x, y);
+                        needs_draw = true;
+                    }
+                }
+            } else if self.mode == Mode::Erase {
+                if let Cursor::ExistingLight(idx) = self.cursor {
+                    self.point_lights.remove(idx);
+                    needs_draw |= self.update_cursor(x, y);
+                } else {
+                    let (xb, yb) = block_coordinate(x, y);
+                    needs_draw |= self.update_block_for_mode(xb, yb);
+                }
+            } else {
+                let (xb, yb) = block_coordinate(x, y);
+                needs_draw |= self.update_block_for_mode(xb, yb);
+            }
+        }
+
+        if needs_draw {
+            self.draw()?;
+        }
+        Ok(())
     }
 
     fn mouse_move(&mut self, mouse_event: MouseEvent) -> Result<(), Error> {
-        if (mouse_event.buttons() & 1) != 0 {
-            self.handle_mouse_event(mouse_event.x(), mouse_event.y())?;
+        let mut needs_draw = false;
+        if let Some((x, y)) = self.screen_coordinate(mouse_event.x(), mouse_event.y()) {
+            let mouse_down = (mouse_event.buttons() & 1) != 0;
+            if self.mode == Mode::PointLight {
+                if let Cursor::ExistingLight(idx) = self.cursor {
+                    if mouse_down {
+                        self.point_lights[idx].0 +=
+                            mouse_event.movement_x() as f32 / self.width as f32;
+                        self.point_lights[idx].1 -=
+                            mouse_event.movement_y() as f32 / self.height as f32;
+                        needs_draw = true;
+                    }
+                }
+            }
+            needs_draw |= self.update_cursor(x, y);
+            if mouse_down {
+                match self.cursor {
+                    Cursor::None => {}
+                    Cursor::Block(x, y) => {
+                        needs_draw |= self.update_block_for_mode(x, y);
+                    }
+                    Cursor::ExistingLight(idx) => {
+                        if self.mode == Mode::Erase {
+                            self.point_lights.remove(idx);
+                            self.update_cursor(x, y);
+                            needs_draw = true;
+                        }
+                    }
+                    Cursor::NewLight(_, _) => {}
+                }
+            }
+        }
+
+        if needs_draw {
+            self.draw()?;
         }
         Ok(())
     }
@@ -455,7 +534,7 @@ impl Demo {
                         let mut xxhash = XxHash::with_seed(29);
                         xxhash.write_u32(x);
                         xxhash.write_u32(y);
-                        let block_tex = LIGHT_TEX_COORDS[(xxhash.finish() % 4) as usize];
+                        let block_tex = LIGHT_BLOCK_TEX_COORDS[(xxhash.finish() % 4) as usize];
 
                         self.renderer.draw(
                             (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
@@ -468,48 +547,124 @@ impl Demo {
             }
         }
 
+        for light in &self.point_lights {
+            let light_rect = (
+                light.0 - BLOCK_SIZE.0 / 2.0,
+                light.1 - BLOCK_SIZE.1 / 2.0,
+                light.0 + BLOCK_SIZE.0 / 2.0,
+                light.1 + BLOCK_SIZE.1 / 2.0,
+            );
+            self.renderer
+                .draw(light_rect, POINT_LIGHT_TEX_COORDS, (1.0, 1.0, 1.0, 1.0));
+        }
+
+        match self.cursor {
+            Cursor::None => {}
+            Cursor::Block(x, y) => {
+                let xc = x as f32 * BLOCK_SIZE.0;
+                let yc = y as f32 * BLOCK_SIZE.1;
+                self.renderer.draw(
+                    (xc, yc, xc + BLOCK_SIZE.0, yc + BLOCK_SIZE.1),
+                    BLOCK_SELECT_TEX_COORDS,
+                    (1.0, 1.0, 1.0, 1.0),
+                );
+            }
+            Cursor::ExistingLight(idx) => {
+                let light = self.point_lights[idx];
+                let light_rect = (
+                    light.0 - BLOCK_SIZE.0 / 2.0,
+                    light.1 - BLOCK_SIZE.1 / 2.0,
+                    light.0 + BLOCK_SIZE.0 / 2.0,
+                    light.1 + BLOCK_SIZE.1 / 2.0,
+                );
+                self.renderer
+                    .draw(light_rect, LIGHT_SELECT_TEX_COORDS, (1.0, 1.0, 1.0, 1.0));
+            }
+            Cursor::NewLight(x, y) => {
+                let light_rect = (
+                    x - BLOCK_SIZE.0 / 2.0,
+                    y - BLOCK_SIZE.1 / 2.0,
+                    x + BLOCK_SIZE.0 / 2.0,
+                    y + BLOCK_SIZE.1 / 2.0,
+                );
+                self.renderer
+                    .draw(light_rect, LIGHT_SELECT_TEX_COORDS, (1.0, 1.0, 1.0, 0.3));
+            }
+        }
+
         self.renderer.finish()?;
 
         Ok(())
     }
 
-    fn handle_mouse_event(&mut self, x: i32, y: i32) -> Result<(), Error> {
+    fn update_cursor(&mut self, x: f32, y: f32) -> bool {
+        let mut new_cursor = Cursor::None;
+        let mut min_distance_squared = f32::MAX;
+        if self.mode == Mode::PointLight || self.mode == Mode::Erase {
+            for (i, light) in self.point_lights.iter().enumerate() {
+                let cur_distance_squared = (light.0 - x).powf(2.0) + (light.1 - y).powf(2.0);
+                if cur_distance_squared < LIGHT_SELECTION_RADIUS.powf(2.0)
+                    && cur_distance_squared < min_distance_squared
+                {
+                    new_cursor = Cursor::ExistingLight(i);
+                    min_distance_squared = cur_distance_squared;
+                }
+            }
+        }
+
+        if new_cursor == Cursor::None {
+            if self.mode == Mode::PointLight {
+                new_cursor = Cursor::NewLight(x, y);
+            } else {
+                let (xi, yi) = block_coordinate(x, y);
+                new_cursor = Cursor::Block(xi, yi);
+            }
+        }
+
+        if self.cursor != new_cursor {
+            self.cursor = new_cursor;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn update_block_for_mode(&mut self, x: u32, y: u32) -> bool {
+        let bi = block_index(x, y);
+
+        let new_block_state = match self.mode {
+            Mode::ForegroundBlock => BlockState::Foreground,
+            Mode::BackgroundBlock => BlockState::Background,
+            Mode::LightBlock => BlockState::Light,
+            Mode::PointLight => return false,
+            Mode::Erase => BlockState::Empty,
+        };
+
+        if self.block_state[bi] != new_block_state {
+            self.block_state[bi] = new_block_state;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn screen_coordinate(&self, x: i32, y: i32) -> Option<(f32, f32)> {
         let x = x as f32 / self.width as f32;
         let y = 1.0 - y as f32 / self.height as f32;
 
         if x < 0.0 || x >= 1.0 || y < 0.0 || y >= 1.0 {
-            return Ok(());
+            None
+        } else {
+            Some((x, y))
         }
-
-        let xi = (x * BLOCK_COUNT.0 as f32).floor() as u32;
-        let yi = (y * BLOCK_COUNT.1 as f32).floor() as u32;
-        let bi = block_index(xi, yi);
-
-        let block_state_change = match self.mode {
-            Mode::ForegroundBlock => {
-                Some(BlockState::Foreground)
-            }
-            Mode::BackgroundBlock => {
-                Some(BlockState::Background)
-            }
-            Mode::LightBlock => {
-                Some(BlockState::Light)
-            }
-            Mode::Erase => {
-                Some(BlockState::Empty)
-            }
-            _ => None,
-        };
-
-        if let Some(new_block_state) = block_state_change {
-            if self.block_state[bi] != new_block_state {
-                self.block_state[bi] = new_block_state;
-                self.draw()?;
-            }
-        }
-
-        Ok(())
     }
+}
+
+fn block_coordinate(x: f32, y: f32) -> (u32, u32) {
+    (
+        (x * BLOCK_COUNT.0 as f32).floor() as u32,
+        (y * BLOCK_COUNT.1 as f32).floor() as u32,
+    )
 }
 
 fn block_index(x: u32, y: u32) -> usize {

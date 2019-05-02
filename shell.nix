@@ -17,7 +17,7 @@ let
 
   rust = rust_channel.rust.override {
     targets = [ "wasm32-unknown-unknown" ];
-    extensions = [ "rust-src" "rustfmt-preview" "rls-preview" ];
+    extensions = [ "rustfmt-preview" ];
   };
 
   jekyll_env = bundlerEnv rec {

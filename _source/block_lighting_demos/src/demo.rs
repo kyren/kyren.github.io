@@ -13,7 +13,7 @@ use web_sys::{
 };
 
 use crate::renderer::Renderer;
-use crate::util::{console_log, get_element, handle_error, js_err, show_element};
+use crate::util::{get_element, handle_error, js_err, show_element};
 
 #[wasm_bindgen]
 pub fn demo_init() {

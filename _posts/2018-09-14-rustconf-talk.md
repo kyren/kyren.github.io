@@ -2273,7 +2273,7 @@ type EntityMap<T> = GenerationalIndexArray<T>;
 struct GameState {
     assets: Assets,
     
-    entity_allocoator: GenerationalIndexAllocator,
+    entity_allocator: GenerationalIndexAllocator,
 
     physics_components: EntityMap<PhysicsComponent>,
     humanoid_animation_components: EntityMap<HumanoidAnimationComponent>,
@@ -2351,7 +2351,7 @@ type EntityMap<T> = GenerationalIndexArray<T>;
 struct GameState {
     assets: Assets,
     
-    entity_allocoator: GenerationalIndexAllocator,
+    entity_allocator: GenerationalIndexAllocator,
     // We're assuming that this will contain only types of the pattern
     // `EntityMap<T>`.  This is dynamic, so the type system stops being helpful
     // here, you could use `mopa` crate to make this somewhat better.
@@ -2374,7 +2374,7 @@ type Entity = GenerationalIndex;
 type EntityMap<T> = GenerationalIndexArray<T>;
 
 struct ECS {
-    entity_allocoator: GenerationalIndexAllocator,
+    entity_allocator: GenerationalIndexAllocator,
     // Full of types like `EntityMap<T>`.
     entity_components: AnyMap,
 
